@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rag-anonymous"
+version = "0.1.0"
+description = "RAG pipeline with Offline/On-Demand anonymization."
+requires-python = ">=3.12"
+dependencies = [
+    "python-dotenv==1.2.2",
+    "langchain-ollama==1.0.1",
+    "langchain-chroma==1.1.0",
+    "langchain-core>=1.0.0,<2.0.0",
+    "langchain-text-splitters==1.1.1",
+    "presidio-analyzer==2.2.361",
+    "presidio-anonymizer==2.2.361",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8.0.0"]
+
+[project.scripts]
+rag-anon = "rag_anonymous.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["rag_anonymous*"]
