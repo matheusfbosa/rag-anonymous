@@ -1,7 +1,7 @@
-"""Shared logging configuration for rag-anonymous and downstream packages."""
-
 import logging
 import os
+
+from dotenv import find_dotenv
 
 DEFAULT_LEVEL = "INFO"
 DEFAULT_HTTP_LEVEL = "WARNING"
@@ -13,9 +13,18 @@ DATE_FORMAT = "%H:%M:%S"
 _HTTP_LOGGERS = ("httpx", "httpcore", "urllib3")
 _PRESIDIO_LOGGERS = ("presidio-analyzer", "presidio-anonymizer")
 
+_ENV_PREFIXES = ("RAG_ANON_", "RAG_METRICS_")
+
+_SENSITIVE_KEY_MARKERS = (
+    "SECRET",
+    "PASSWORD",
+    "TOKEN",
+    "API_KEY",
+    "PRIVATE_KEY",
+)
+
 
 def configure_logging() -> None:
-    """Configure root + noisy third-party loggers using env-driven levels."""
     root_level = _resolve_level(os.getenv("RAG_ANON_LOG_LEVEL"), DEFAULT_LEVEL)
     http_level = _resolve_level(os.getenv("RAG_ANON_LOG_LEVEL_HTTP"), DEFAULT_HTTP_LEVEL)
     presidio_level = _resolve_level(
@@ -33,9 +42,55 @@ def configure_logging() -> None:
     for name in _PRESIDIO_LOGGERS:
         logging.getLogger(name).setLevel(presidio_level)
 
+    _log_startup_env_configuration()
+
+
+def _startup_env_logging_enabled() -> bool:
+    raw = (os.getenv("RAG_ANON_LOG_STARTUP_ENV") or "true").strip().lower()
+    return raw not in ("0", "false", "no", "off")
+
+
+def _is_sensitive_env_key(name: str) -> bool:
+    upper = name.upper()
+    return any(marker in upper for marker in _SENSITIVE_KEY_MARKERS)
+
+
+def _mask_env_value(key: str, value: str) -> str:
+    if not _is_sensitive_env_key(key):
+        return value
+    if not value:
+        return "***"
+    return f"{value[:2]}***"
+
+
+def _log_startup_env_configuration() -> None:
+    if not _startup_env_logging_enabled():
+        return
+
+    log = logging.getLogger(__name__)
+    dotenv_path = find_dotenv()
+    if dotenv_path:
+        log.info("Loaded .env")
+    else:
+        log.info("No .env file found")
+
+    keys = sorted(k for k in os.environ if k.startswith(_ENV_PREFIXES))
+    if not keys:
+        log.info(
+            "No env variables starting with prefixes=%s", _ENV_PREFIXES,
+        )
+        return
+
+    log.info(".env variables:")
+    for key in keys:
+        log.info(
+            "  %s=%s",
+            key,
+            _mask_env_value(key, os.environ[key]),
+        )
+
 
 def _resolve_level(raw: str | None, default: str) -> int:
-    """Map a string/numeric level (or None) to a stdlib logging int."""
     value = (raw or default).strip()
     if value.isdigit():
         return int(value)

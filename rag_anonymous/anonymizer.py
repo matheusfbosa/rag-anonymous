@@ -23,15 +23,12 @@ MONEY_PATTERN = Pattern(
 
 
 class Anonymizer:
-    """Presidio-based PII anonymization. Wraps analyzer and anonymizer engines."""
-
     def __init__(self, entities=None):
         self._entities = entities if entities is not None else _entities_from_env()
         self._analyzer = _create_analyzer_engine()
         self._anonymizer = AnonymizerEngine()
 
     def anonymize(self, text):
-        """Return text with PII replaced by entity tags."""
         text = _ensure_str(text)
         results = self._analyzer.analyze(
             text=text, language="en", entities=self._entities
@@ -87,7 +84,6 @@ def _entities_from_env() -> list[str]:
 
 
 def _ensure_str(text):
-    """Coerce input to a plain Python str so Presidio/Spacy never receive a proxy or list."""
     if text is None:
         return ""
     if isinstance(text, str):

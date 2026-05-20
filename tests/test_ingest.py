@@ -1,11 +1,3 @@
-"""Unit tests for ``rag_anonymous.ingest`` document-building logic.
-
-We exercise ``_build_documents`` directly with a fake anonymizer so we don't
-need Chroma, Ollama, or Presidio. The id<->metadata alignment is the critical
-invariant: passing matching ``ids`` to Chroma is what turns re-ingest into an
-upsert instead of an append.
-"""
-
 from pathlib import Path
 
 import pytest
@@ -16,14 +8,11 @@ from rag_anonymous.ingest import _build_documents, _corpus_cache_path
 
 @pytest.fixture(autouse=True)
 def _force_small_chunks(monkeypatch):
-    """Force the splitter into multi-chunk territory for ``doc1`` in the fixture corpus."""
     monkeypatch.setenv("RAG_ANON_CHUNK_SIZE", "50")
     monkeypatch.setenv("RAG_ANON_CHUNK_OVERLAP", "0")
 
 
 class TestBuildDocumentsCommon:
-    """Invariants that must hold regardless of strategy."""
-
     def test_ids_align_with_chunk_id_metadata(self, sample_corpus, fake_anonymizer):
         documents, ids = _build_documents(sample_corpus, anonymizer=fake_anonymizer)
 
@@ -68,15 +57,12 @@ class TestBuildDocumentsCommon:
             assert doc.metadata["original_length"] == raw_lengths[doc.metadata["doc_id"]]
 
     def test_doc1_actually_chunked(self, sample_corpus, fake_anonymizer):
-        """Sanity: with chunk_size=50 the long doc must produce >1 chunk."""
         documents, _ = _build_documents(sample_corpus, anonymizer=fake_anonymizer)
         doc1_chunks = [d for d in documents if d.metadata["doc_id"] == "doc1"]
         assert len(doc1_chunks) > 1
 
 
 class TestBuildDocumentsOffline:
-    """Anonymizer-applied (offline) strategy."""
-
     def test_strategy_metadata_is_offline(self, sample_corpus, fake_anonymizer):
         documents, _ = _build_documents(sample_corpus, anonymizer=fake_anonymizer)
         assert all(doc.metadata["strategy"] == "offline" for doc in documents)
@@ -94,8 +80,6 @@ class TestBuildDocumentsOffline:
 
 
 class TestBuildDocumentsOndemand:
-    """Raw (ondemand) strategy: no anonymizer, raw text preserved."""
-
     def test_strategy_metadata_is_ondemand(self, sample_corpus):
         documents, _ = _build_documents(sample_corpus, anonymizer=None)
         assert all(doc.metadata["strategy"] == "ondemand" for doc in documents)

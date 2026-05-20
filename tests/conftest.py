@@ -1,16 +1,12 @@
-"""Shared fixtures for the rag-anonymous unit test suite."""
-
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _disable_startup_env_logging(monkeypatch):
+    monkeypatch.setenv("RAG_ANON_LOG_STARTUP_ENV", "false")
+
+
 class FakeAnonymizer:
-    """Stand-in for ``Anonymizer`` that avoids loading Presidio/Spacy.
-
-    Replaces ``Alice`` with ``<PERSON>`` so tests can assert that
-    ``ingest._build_documents`` actually routes text through the anonymizer
-    when one is provided.
-    """
-
     def anonymize(self, text: str) -> str:
         return text.replace("Alice", "<PERSON>")
 
@@ -22,7 +18,6 @@ def fake_anonymizer() -> FakeAnonymizer:
 
 @pytest.fixture
 def sample_corpus() -> list[dict]:
-    """Two-doc corpus where doc1 is large enough to be split into multiple chunks."""
     return [
         {"doc_id": "doc1", "text": "Alice met Bob in Paris. " * 20},
         {"doc_id": "doc2", "text": "Short."},

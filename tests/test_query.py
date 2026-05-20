@@ -1,9 +1,3 @@
-"""Unit tests for ``rag_anonymous.query``.
-
-Exercises ``query_rag`` against fake retriever/chain objects (no Ollama, no
-Chroma) plus the ``reasoning_flag`` env-var parser.
-"""
-
 import pytest
 from langchain_core.documents import Document
 
@@ -44,7 +38,6 @@ class FakeChain:
 
 @pytest.fixture
 def retrieved_docs() -> list[Document]:
-    """Three chunks across two unique documents (a, a, b)."""
     return [
         Document(
             page_content="alpha content",
@@ -87,9 +80,9 @@ class TestQueryRag:
             "gamma content",
         ]
 
-    def test_num_unique_docs_deduplicates(self, retrieved_docs):
+    def test_docs_unique_deduplicates(self, retrieved_docs):
         result = query_rag(FakeChain(), FakeVectorDB(retrieved_docs), "q", k_docs=3)
-        assert result["num_unique_docs"] == 2
+        assert result["docs_unique"] == 2
 
     def test_context_joined_with_separator(self, retrieved_docs):
         chain = FakeChain()

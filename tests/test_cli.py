@@ -1,12 +1,3 @@
-"""Unit tests for ``rag_anonymous.cli``.
-
-Cover the small bits of logic the CLI owns: response coercion, argv dispatch,
-and the ``cmd_query`` guard for missing ``RAG_ANON_QUERY_QUESTION``. The happy
-paths of ``cmd_ingest``/``cmd_query`` are covered by patching their commands
-out — the deeper machinery they call into needs Chroma/Ollama and is tested
-indirectly via the other modules.
-"""
-
 import sys
 from types import SimpleNamespace
 
@@ -32,7 +23,6 @@ class TestResponseText:
         assert _response_text(Custom()) == "stringified"
 
     def test_content_attribute_takes_precedence_over_str(self):
-        """If ``.content`` exists it should win, even when ``__str__`` differs."""
         obj = SimpleNamespace(content="from-content")
         assert _response_text(obj) == "from-content"
 

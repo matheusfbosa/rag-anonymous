@@ -38,7 +38,7 @@ def query_rag(chain, vectordb, question, k_docs=None):
             }
             for doc in chunks
         ],
-        "num_unique_docs": len(set(c.metadata["doc_id"] for c in chunks)),
+        "docs_unique": len(set(c.metadata["doc_id"] for c in chunks)),
     }
 
 
@@ -65,7 +65,6 @@ def load_vectordb(collection_name="offline", persist_dir=None):
 
 
 def build_llm(model_name: str | None = None) -> ChatOllama:
-    """Build ChatOllama model."""
     return ChatOllama(
         model=model_name or os.getenv("RAG_ANON_LLM_MODEL", "qwen3:0.6b"),
         base_url=os.getenv("RAG_ANON_OLLAMA_BASE_URL", "http://localhost:11434"),
@@ -75,33 +74,24 @@ def build_llm(model_name: str | None = None) -> ChatOllama:
 
 
 def reasoning_flag() -> bool:
-    """Parse RAG_ANON_LLM_REASONING into a bool. Defaults to False to keep
-    thinking disabled (faster + cleaner output) for non-reasoning workloads."""
     return os.getenv("RAG_ANON_LLM_REASONING", "false").strip().lower() in (
         "1", "true", "yes",
     )
 
 
 def _log_collection_health(vectordb, collection_name):
-    """Surface common ingestion problems (empty / duplicated chunks) at load time.
-
-    Re-ingesting without first dropping the collection would silently append a
-    full second copy of every chunk, which then makes top-K retrieval return the
-    same chunk multiple times and inflates utility metrics. Comparing
-    ``count`` against ``unique chunk_id`` count catches this drift cheaply.
-    """
     try:
         count = vectordb._collection.count()
     except Exception as exc:
-        logger.warning("Could not read count for collection '%s': %s", collection_name, exc)
+        logger.warning(
+            "Could not read collection count: name=%s error=%s",
+            collection_name,
+            exc,
+        )
         return
 
     if count == 0:
-        logger.warning(
-            "Collection '%s' is empty. Did you run `rag-anon ingest` "
-            "with RAG_ANON_ANONYMIZER_STRATEGY=%s ?",
-            collection_name, collection_name,
-        )
+        logger.warning("Collection empty: name=%s", collection_name)
         return
 
     try:
@@ -111,18 +101,32 @@ def _log_collection_health(vectordb, collection_name):
         ]
         unique = len({c for c in chunk_ids if c})
     except Exception as exc:
-        logger.warning("Could not inspect metadata for '%s': %s", collection_name, exc)
-        logger.info("Collection '%s' loaded with %d chunks", collection_name, count)
+        logger.warning(
+            "Could not inspect collection metadata: name=%s error=%s",
+            collection_name,
+            exc,
+        )
+        logger.info(
+            "Loaded vectordb: collection=%s chunks=%d metadata=skipped",
+            collection_name,
+            count,
+        )
         return
 
     if unique and count != unique:
         logger.warning(
-            "Collection '%s' has %d chunks but only %d unique chunk_id values "
-            "(%.1fx duplication). Re-run `rag-anon ingest` to clean it up.",
-            collection_name, count, unique, count / unique,
+            "Collection chunk_id duplication: name=%s chunks=%d chunk_ids_unique=%d",
+            collection_name,
+            count,
+            unique,
         )
     else:
-        logger.info("Collection '%s' loaded: %d chunks", collection_name, count)
+        logger.info(
+            "Loaded vectordb: collection=%s chunks=%d chunk_ids_unique=%d",
+            collection_name,
+            count,
+            unique,
+        )
 
 
 def _chromadb_persist_dir() -> str:

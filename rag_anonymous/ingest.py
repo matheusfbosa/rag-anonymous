@@ -27,12 +27,10 @@ def ingest_offline(
     collection_name="offline",
     persist_dir=None,
 ):
-    """Index corpus with anonymized text (offline strategy)."""
     return _ingest(corpus, collection_name, persist_dir, anonymizer=anonymizer)
 
 
 def ingest_ondemand(corpus, collection_name="ondemand", persist_dir=None):
-    """Index raw corpus (no anonymization) for ondemand strategy."""
     return _ingest(corpus, collection_name, persist_dir, anonymizer=None)
 
 
@@ -48,13 +46,21 @@ def _ingest(corpus, collection_name, persist_dir, anonymizer):
     persist_dir = persist_dir or _chromadb_persist_dir()
     label = "anonymized" if anonymizer is not None else "raw"
 
-    logger.info("Building documents (%s) for %d corpus items...", label, len(corpus))
+    logger.info(
+        "Ingesting documents: label=%s corpus_items=%d",
+        label,
+        len(corpus),
+    )
     documents, ids = _build_documents(corpus, anonymizer=anonymizer)
 
     embeddings = _embeddings()
     _wipe_existing_collection(collection_name, persist_dir, embeddings)
 
-    logger.info("Indexing %d chunks into Chroma (%s)...", len(documents), persist_dir)
+    logger.info(
+        "Ingesting chunks: chunk_count=%d persist_dir=%s",
+        len(documents),
+        persist_dir,
+    )
     vectordb = Chroma.from_documents(
         documents=documents,
         ids=ids,
@@ -63,17 +69,14 @@ def _ingest(corpus, collection_name, persist_dir, anonymizer):
         persist_directory=persist_dir,
     )
 
-    logger.info("Ingestion complete: %d chunks indexed.", vectordb._collection.count())
+    logger.info(
+        "Ingested: chunks=%d",
+        vectordb._collection.count(),
+    )
     return vectordb
 
 
 def _wipe_existing_collection(collection_name: str, persist_dir: str, embeddings) -> None:
-    """Drop any prior copy of ``collection_name`` so re-ingest stays idempotent.
-
-    Without this, repeated ``rag-anon ingest`` runs accumulate full duplicates of
-    every chunk in the persistent Chroma directory, silently corrupting top-K
-    retrieval (the same chunk gets returned multiple times for one query).
-    """
     existing = Chroma(
         collection_name=collection_name,
         embedding_function=embeddings,
@@ -82,24 +85,22 @@ def _wipe_existing_collection(collection_name: str, persist_dir: str, embeddings
     try:
         prior = existing._collection.count()
     except Exception as exc:
-        logger.warning("Could not read prior '%s' collection size: %s", collection_name, exc)
+        logger.warning(
+            "Could not read prior collection size: name=%s error=%s",
+            collection_name,
+            exc,
+        )
         return
     if prior:
         logger.info(
-            "Dropping existing '%s' collection (%d chunks) before reingesting",
-            collection_name, prior,
+            "Ingesting drop_collection: name=%s prior_chunks=%d reason=reingest",
+            collection_name,
+            prior,
         )
         existing.delete_collection()
 
 
 def _build_documents(corpus, anonymizer=None):
-    """Build chunked documents (and matching deterministic ids) from corpus.
-
-    If ``anonymizer`` is given, text is anonymized before chunking (offline strategy);
-    otherwise raw text is chunked (ondemand strategy). Returns ``(documents, ids)``
-    where ``ids[i] == documents[i].metadata["chunk_id"]``; passing these ids to
-    Chroma turns re-ingestion into an upsert instead of an append.
-    """
     strategy = "offline" if anonymizer is not None else "ondemand"
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=int(os.getenv("RAG_ANON_CHUNK_SIZE", "200")),
@@ -134,9 +135,18 @@ def _build_documents(corpus, anonymizer=None):
             chunk_count += 1
 
         if (idx + 1) % PROGRESS_EVERY == 0:
-            logger.info("  Processed %d/%d documents (%d chunks)", idx + 1, len(corpus), chunk_count)
+            logger.info(
+                "  Processing documents: done=%d total=%d chunks=%d",
+                idx + 1,
+                len(corpus),
+                chunk_count,
+            )
 
-    logger.info("  Total: %d documents, %d chunks", len(corpus), chunk_count)
+    logger.info(
+        "Ingested: documents=%d chunks=%d",
+        len(corpus),
+        chunk_count,
+    )
     return documents, ids
 
 
@@ -144,7 +154,7 @@ def _download_corpus(split: str) -> None:
     url = f"{_TAB_BASE_URL}/echr_{split}.json"
     dest = _corpus_cache_path(split)
     _DATA_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    logger.info("Downloading %s -> %s", url, dest)
+    logger.info("Ingesting download: url=%s dest=%s", url, dest)
     urllib.request.urlretrieve(url, dest)
 
 

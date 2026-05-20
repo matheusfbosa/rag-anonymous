@@ -1,10 +1,3 @@
-"""Unit tests for ``rag_anonymous.anonymizer`` helpers.
-
-The Presidio-backed ``Anonymizer`` itself is intentionally not exercised here:
-instantiating it loads ``en_core_web_lg`` which is far too heavy for a unit
-test. We focus on the pure helpers that protect the engine's input contract.
-"""
-
 from rag_anonymous.anonymizer import (
     DEFAULT_ENTITIES,
     _ensure_str,

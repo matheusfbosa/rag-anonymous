@@ -1,11 +1,3 @@
-"""rag-anonymous: RAG pipeline with Offline/On-Demand anonymization strategies.
-
-- ``Anonymizer``: Presidio-based PII anonymization wrapper.
-- ``load_corpus``: download / cache TAB corpus splits.
-- ``ingest_offline`` / ``ingest_ondemand``: index a corpus into Chroma.
-- ``load_vectordb`` / ``create_chain`` / ``query_rag``: retrieval and generation helpers.
-"""
-
 from dotenv import load_dotenv
 
 load_dotenv()
