@@ -3,6 +3,8 @@ import os
 
 from dotenv import find_dotenv
 
+from rag_anonymous.config import Settings
+
 DEFAULT_LEVEL = "INFO"
 DEFAULT_HTTP_LEVEL = "WARNING"
 DEFAULT_PRESIDIO_LEVEL = "ERROR"
@@ -25,11 +27,10 @@ _SENSITIVE_KEY_MARKERS = (
 
 
 def configure_logging() -> None:
-    root_level = _resolve_level(os.getenv("RAG_ANON_LOG_LEVEL"), DEFAULT_LEVEL)
-    http_level = _resolve_level(os.getenv("RAG_ANON_LOG_LEVEL_HTTP"), DEFAULT_HTTP_LEVEL)
-    presidio_level = _resolve_level(
-        os.getenv("RAG_ANON_LOG_LEVEL_PRESIDIO"), DEFAULT_PRESIDIO_LEVEL
-    )
+    s = Settings.load()
+    root_level = _resolve_level(s.log_level, DEFAULT_LEVEL)
+    http_level = _resolve_level(s.log_level_http, DEFAULT_HTTP_LEVEL)
+    presidio_level = _resolve_level(s.log_level_presidio, DEFAULT_PRESIDIO_LEVEL)
 
     root = logging.getLogger()
     if not root.handlers:
@@ -45,22 +46,9 @@ def configure_logging() -> None:
     _log_startup_env_configuration()
 
 
-def _startup_env_logging_enabled() -> bool:
-    raw = (os.getenv("RAG_ANON_LOG_STARTUP_ENV") or "true").strip().lower()
-    return raw not in ("0", "false", "no", "off")
-
-
 def _is_sensitive_env_key(name: str) -> bool:
     upper = name.upper()
     return any(marker in upper for marker in _SENSITIVE_KEY_MARKERS)
-
-
-def _mask_env_value(key: str, value: str) -> str:
-    if not _is_sensitive_env_key(key):
-        return value
-    if not value:
-        return "***"
-    return f"{value[:2]}***"
 
 
 def _log_startup_env_configuration() -> None:
@@ -90,6 +78,14 @@ def _log_startup_env_configuration() -> None:
         )
 
 
+def _mask_env_value(key: str, value: str) -> str:
+    if not _is_sensitive_env_key(key):
+        return value
+    if not value:
+        return "***"
+    return f"{value[:2]}***"
+
+
 def _resolve_level(raw: str | None, default: str) -> int:
     value = (raw or default).strip()
     if value.isdigit():
@@ -98,3 +94,7 @@ def _resolve_level(raw: str | None, default: str) -> int:
     if isinstance(level, int):
         return level
     return logging.getLevelName(default)
+
+
+def _startup_env_logging_enabled() -> bool:
+    return Settings.load().log_startup_env_enabled()

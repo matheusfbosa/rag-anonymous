@@ -18,7 +18,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest>=8.0.0"]
+test = [
+    "pytest>=8.0.0"
+]
 
 [project.scripts]
 rag-anon = "rag_anonymous.cli:main"

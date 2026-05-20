@@ -1,5 +1,3 @@
-import os
-
 from presidio_analyzer import (
     AnalyzerEngine,
     Pattern,
@@ -10,7 +8,9 @@ from presidio_analyzer.nlp_engine import NlpEngineProvider
 from presidio_anonymizer import AnonymizerEngine
 from presidio_anonymizer.entities import OperatorConfig
 
-DEFAULT_ENTITIES = "PERSON,LOCATION,ORGANIZATION,DATE_TIME,MONEY"
+from rag_anonymous.config import DEFAULT_ANONYMIZER_ENTITIES, Settings
+
+DEFAULT_ENTITIES = DEFAULT_ANONYMIZER_ENTITIES
 
 MONEY_PATTERN = Pattern(
     name="currency_pattern",
@@ -79,10 +79,6 @@ def _create_analyzer_engine():
     return engine
 
 
-def _entities_from_env() -> list[str]:
-    return os.getenv("RAG_ANON_ANONYMIZER_ENTITIES", DEFAULT_ENTITIES).split(",")
-
-
 def _ensure_str(text):
     if text is None:
         return ""
@@ -91,3 +87,7 @@ def _ensure_str(text):
     if isinstance(text, (list, tuple)):
         return " ".join(_ensure_str(block) for block in text)
     return str(text)
+
+
+def _entities_from_env() -> list[str]:
+    return list(Settings.load().anonymizer_entities)
