@@ -17,7 +17,7 @@ DEFAULT_ANONYMIZER_ENTITIES = "PERSON,LOCATION,ORGANIZATION,DATE_TIME,MONEY"
 @dataclass(frozen=True)
 class Settings:
     anonymizer_strategy: str
-    corpus_split: str
+    dataset: str
     query_question: str
     chunk_size: int
     chunk_overlap: int
@@ -48,7 +48,7 @@ class Settings:
             anonymizer_strategy=os.getenv(
                 "RAG_ANON_ANONYMIZER_STRATEGY", "offline"
             ),
-            corpus_split=os.getenv("RAG_ANON_CORPUS_SPLIT", "dev"),
+            dataset=os.getenv("RAG_ANON_CORPUS_DATASET", "dev"),
             query_question=os.getenv("RAG_ANON_QUERY_QUESTION", ""),
             chunk_size=int(os.getenv("RAG_ANON_CHUNK_SIZE", "200")),
             chunk_overlap=int(os.getenv("RAG_ANON_CHUNK_OVERLAP", "0")),

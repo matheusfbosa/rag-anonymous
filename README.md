@@ -101,12 +101,12 @@ The CLI takes no flags — all knobs come from environment variables (typically 
 - **Offline:** Anonymizes the TAB corpus before indexing (PII replaced by tags in stored chunks).
 - **On-Demand:** Indexes the corpus as-is (raw text); anonymization is applied to the LLM answer at query time.
 
-Reads `RAG_ANON_ANONYMIZER_STRATEGY` and `RAG_ANON_CORPUS_SPLIT` from env:
+Reads `RAG_ANON_ANONYMIZER_STRATEGY` and `RAG_ANON_CORPUS_DATASET` from env:
 
 ```sh
 make ingest
 # or override inline:
-RAG_ANON_ANONYMIZER_STRATEGY=ondemand RAG_ANON_CORPUS_SPLIT=train make ingest
+RAG_ANON_ANONYMIZER_STRATEGY=ondemand RAG_ANON_CORPUS_DATASET=train make ingest
 ```
 
 Equivalent direct CLI:
@@ -141,7 +141,7 @@ RAG_ANON_QUERY_QUESTION="..." rag-anon query
 | `RAG_ANON_CHUNK_OVERLAP`        | `0`                      | Text chunk overlap                                                                                                                                                                                                               |
 | `RAG_ANON_CHUNK_SIZE`           | `200`                    | Text chunk size                                                                                                                                                                                                                  |
 | `RAG_ANON_CHROMADB_PERSIST_DIR` | `./chromadb`             | Vector store persistence directory                                                                                                                                                                                               |
-| `RAG_ANON_CORPUS_SPLIT`         | `dev`                    | TAB split (train/dev/test)                                                                                                                                                                                                       |
+| `RAG_ANON_CORPUS_DATASET`         | `dev`                    | TAB split (train/dev/test)                                                                                                                                                                                                       |
 | `RAG_ANON_EMBEDDING_MODEL`      | `nomic-embed-text`       | Embeddings model                                                                                                                                                                                                                 |
 | `RAG_ANON_LLM_MODEL`            | `qwen3:0.6b`             | Generator model                                                                                                                                                                                                                  |
 | `RAG_ANON_LLM_REASONING`        | `false`                  | Maps to `ChatOllama(reasoning=...)`. `false` disables thinking via Ollama's `think` flag (faster, cleaner output). Set to `true` only when running a reasoning-capable model and you want `<think>` content captured separately. |

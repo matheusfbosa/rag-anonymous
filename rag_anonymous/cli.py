@@ -15,10 +15,10 @@ USAGE = "Usage: rag-anon {ingest|query}  (configure via env / .env)"
 def cmd_ingest():
     s = Settings.load()
     strategy = s.anonymizer_strategy
-    split = s.corpus_split
+    dataset = s.dataset
 
-    logger.info("Ingesting: strategy=%s corpus_split=%s", strategy, split)
-    corpus = load_corpus(split)
+    logger.info("Ingesting: strategy=%s dataset=%s", strategy, dataset)
+    corpus = load_corpus(dataset)
     if strategy == "ondemand":
         ingest_ondemand(corpus, collection_name=strategy)
     else:
