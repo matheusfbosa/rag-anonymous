@@ -1,9 +1,4 @@
-from presidio_analyzer import (
-    AnalyzerEngine,
-    Pattern,
-    PatternRecognizer,
-    RecognizerRegistry,
-)
+from presidio_analyzer import AnalyzerEngine, RecognizerRegistry
 from presidio_analyzer.nlp_engine import NlpEngineProvider
 from presidio_anonymizer import AnonymizerEngine
 from presidio_anonymizer.entities import OperatorConfig
@@ -11,15 +6,6 @@ from presidio_anonymizer.entities import OperatorConfig
 from rag_anonymous.config import DEFAULT_ANONYMIZER_ENTITIES, Settings
 
 DEFAULT_ENTITIES = DEFAULT_ANONYMIZER_ENTITIES
-
-MONEY_PATTERN = Pattern(
-    name="currency_pattern",
-    regex=(
-        r"(?:R\$|€|\$|US\$|EUR)\s?\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?"
-        r"|^\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?\s?(?:R\$|€|\$|US\$|EUR)"
-    ),
-    score=0.8,
-)
 
 
 class Anonymizer:
@@ -44,7 +30,12 @@ class Anonymizer:
 def _create_analyzer_engine():
     provider = NlpEngineProvider(nlp_configuration={
         "nlp_engine_name": "spacy",
-        "models": [{"lang_code": "en", "model_name": "en_core_web_lg"}],
+        "models": [
+            {
+                "lang_code": "en",
+                "model_name": "en_core_web_lg"
+            }
+        ],
         "ner_model_configuration": {
             "model_to_presidio_entity_mapping": {
                 "PER": "PERSON",
@@ -53,28 +44,28 @@ def _create_analyzer_engine():
                 "LOCATION": "LOCATION",
                 "GPE": "LOCATION",
                 "FAC": "LOCATION",
-                "ORG": "ORGANIZATION",
-                "ORGANIZATION": "ORGANIZATION",
                 "DATE": "DATE_TIME",
                 "TIME": "DATE_TIME",
-                "NORP": "NRP",
-                "MONEY": "MONEY",
             },
             "labels_to_ignore": [
-                "CARDINAL", "LAW",
-                "WORK_OF_ART", "ORDINAL", "PERCENT",
-                "PRODUCT", "LANGUAGE", "QUANTITY", "EVENT",
+                "CARDINAL",
+                "LAW",
+                "WORK_OF_ART",
+                "ORDINAL",
+                "PERCENT",
+                "PRODUCT",
+                "LANGUAGE",
+                "QUANTITY",
+                "EVENT",
+                "ORG",
+                "NORP",
+                "MONEY",
             ],
         },
     })
     nlp_engine = provider.create_engine()
     registry = RecognizerRegistry(supported_languages=["en"])
     registry.load_predefined_recognizers(nlp_engine=nlp_engine)
-    money_recognizer = PatternRecognizer(
-        supported_entity="MONEY",
-        patterns=[MONEY_PATTERN],
-    )
-    registry.add_recognizer(recognizer=money_recognizer)
     engine = AnalyzerEngine(nlp_engine=nlp_engine, registry=registry)
     return engine
 

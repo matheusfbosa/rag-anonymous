@@ -45,10 +45,10 @@ def load_corpus(split: str) -> list[dict]:
 def _build_documents(corpus, anonymizer=None):
     strategy = "offline" if anonymizer is not None else "ondemand"
     s = Settings.load()
-    splitter = RecursiveCharacterTextSplitter(
+    splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
+        encoding_name="cl100k_base",
         chunk_size=s.chunk_size,
         chunk_overlap=s.chunk_overlap,
-        length_function=len,
         is_separator_regex=False,
     )
 

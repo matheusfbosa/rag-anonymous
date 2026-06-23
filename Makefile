@@ -12,19 +12,13 @@ docker-clean:
 
 docker-ollama-pull-models:
 	docker exec -it ollama ollama pull nomic-embed-text
-	docker exec -it ollama ollama pull qwen3:0.6b
-	docker exec -it ollama ollama pull qwen3:1.7b
-	docker exec -it ollama ollama pull qwen3:4b
-	docker exec -it ollama ollama pull gemma4:e2b
-	docker exec -it ollama ollama pull gemma4:e4b
+	docker exec -it ollama ollama pull qwen3:8b
+	docker exec -it ollama ollama pull gemma4:12b
 
 ollama-pull-models:
 	ollama pull nomic-embed-text
-	ollama pull qwen3:0.6b
-	ollama pull qwen3:1.7b
-	ollama pull qwen3:4b
-	ollama pull gemma4:e2b
-	ollama pull gemma4:e4b
+	ollama pull qwen3:8b
+	ollama pull gemma4:12b
 
 ingest:
 	rag-anon ingest

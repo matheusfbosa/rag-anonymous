@@ -86,11 +86,13 @@ make docker-down                  # stop the container when done
 ```sh
 python3.12 -m venv .venv
 source .venv/bin/activate
+
 pip install -e .
+
 cp .env.example .env
 ```
 
-`pip install -e .` reads `pyproject.toml` and installs the `rag_anonymous` package locally in editable mode. Nothing is published to PyPI.
+`pip install -e .` reads `pyproject.toml` and installs the `rag_anonymous` package locally in editable mode.
 
 ## Usage
 
@@ -134,23 +136,24 @@ RAG_ANON_QUERY_QUESTION="..." rag-anon query
 ## Configuration
 
 
-| Variable                        | Default                  | Description                                                                                                                                                                                                                      |
-| ------------------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `RAG_ANON_ANONYMIZER_ENTITIES`  | `PERSON,LOCATION,...`    | Presidio entity types                                                                                                                                                                                                            |
-| `RAG_ANON_ANONYMIZER_STRATEGY`  | `offline`                | Anonymization strategy (`offline` or `ondemand`)                                                                                                                                                                                 |
-| `RAG_ANON_CHUNK_OVERLAP`        | `0`                      | Text chunk overlap                                                                                                                                                                                                               |
-| `RAG_ANON_CHUNK_SIZE`           | `200`                    | Text chunk size                                                                                                                                                                                                                  |
-| `RAG_ANON_CHROMADB_PERSIST_DIR` | `./chromadb`             | Vector store persistence directory                                                                                                                                                                                               |
-| `RAG_ANON_CORPUS_DATASET`         | `dev`                    | TAB split (train/dev/test)                                                                                                                                                                                                       |
-| `RAG_ANON_EMBEDDING_MODEL`      | `nomic-embed-text`       | Embeddings model                                                                                                                                                                                                                 |
-| `RAG_ANON_LLM_MODEL`            | `qwen3:0.6b`             | Generator model                                                                                                                                                                                                                  |
-| `RAG_ANON_LLM_REASONING`        | `false`                  | Maps to `ChatOllama(reasoning=...)`. `false` disables thinking via Ollama's `think` flag (faster, cleaner output). Set to `true` only when running a reasoning-capable model and you want `<think>` content captured separately. |
-| `RAG_ANON_LLM_TEMPERATURE`      | `0.0`                    | Generation temperature                                                                                                                                                                                                           |
-| `RAG_ANON_LOG_LEVEL`            | `INFO`                   | Application loggers / root level. Accepts `DEBUG`/`INFO`/`WARNING`/`ERROR`/`CRITICAL` or a numeric level. Also picked up by `rag-anonymous-metrics`.                                                                             |
-| `RAG_ANON_LOG_LEVEL_HTTP`       | `WARNING`                | Level for the HTTP client loggers (`httpx`, `httpcore`, `urllib3`). Set to `INFO` to see every Ollama HTTP call.                                                                                                                 |
-| `RAG_ANON_LOG_LEVEL_PRESIDIO`   | `ERROR`                  | Level for `presidio-analyzer` / `presidio-anonymizer` loggers. The default suppresses the noisy startup banner; raise to `INFO` to debug recognizer issues.                                                                      |
-| `RAG_ANON_OLLAMA_BASE_URL`      | `http://localhost:11434` | Ollama API endpoint                                                                                                                                                                                                              |
-| `RAG_ANON_QUERY_QUESTION`       | `""`                     | Question used by `rag-anon query`                                                                                                                                                                                                |
-| `RAG_ANON_RETRIEVAL_K_DOCS`     | `5`                      | Retrieved chunks per query                                                                                                                                                                                                       |
+| Variable                        | Default                     | Description                                                                                                                                                                                                                      |
+| ------------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `RAG_ANON_ANONYMIZER_ENTITIES`  | `PERSON,DATE_TIME,LOCATION` | Presidio entity types                                                                                                                                                                                                            |
+| `RAG_ANON_ANONYMIZER_STRATEGY`  | `offline`                   | Anonymization strategy (`offline` or `ondemand`)                                                                                                                                                                                 |
+| `RAG_ANON_CHUNK_OVERLAP`        | `0`                         | Chunk overlap, in tokens (`cl100k_base`)                                                                                                                                                                                         |
+| `RAG_ANON_CHUNK_SIZE`           | `200`                       | Chunk size, in tokens (`cl100k_base`)                                                                                                                                                                                            |
+| `RAG_ANON_CHROMADB_PERSIST_DIR` | `./chromadb`                | Vector store persistence directory                                                                                                                                                                                               |
+| `RAG_ANON_CORPUS_DATASET`       | `dev`                       | TAB split (train/dev/test)                                                                                                                                                                                                       |
+| `RAG_ANON_EMBEDDING_MODEL`      | `nomic-embed-text`          | Embeddings model                                                                                                                                                                                                                 |
+| `RAG_ANON_LLM_MODEL`            | `qwen3:8b`                  | Generator model                                                                                                                                                                                                                  |
+| `RAG_ANON_LLM_NUM_CTX`          | `8192`                      | Ollama context window size in tokens. Caps the total tokens (prompt + generated output) sent to the model. Increase if retrieved chunks + prompt exceed the default; lower to reduce VRAM usage.                                 |
+| `RAG_ANON_LLM_REASONING`        | `false`                     | Maps to `ChatOllama(reasoning=...)`. `false` disables thinking via Ollama's `think` flag (faster, cleaner output). Set to `true` only when running a reasoning-capable model and you want `<think>` content captured separately. |
+| `RAG_ANON_LLM_TEMPERATURE`      | `0.0`                       | Generation temperature                                                                                                                                                                                                           |
+| `RAG_ANON_LOG_LEVEL`            | `INFO`                      | Application loggers / root level. Accepts `DEBUG`/`INFO`/`WARNING`/`ERROR`/`CRITICAL` or a numeric level. Also picked up by `rag-anonymous-metrics`.                                                                             |
+| `RAG_ANON_LOG_LEVEL_HTTP`       | `WARNING`                   | Level for the HTTP client loggers (`httpx`, `httpcore`, `urllib3`). Set to `INFO` to see every Ollama HTTP call.                                                                                                                 |
+| `RAG_ANON_LOG_LEVEL_PRESIDIO`   | `ERROR`                     | Level for `presidio-analyzer` / `presidio-anonymizer` loggers. The default suppresses the noisy startup banner; raise to `INFO` to debug recognizer issues.                                                                      |
+| `RAG_ANON_OLLAMA_BASE_URL`      | `http://localhost:11434`    | Ollama API endpoint                                                                                                                                                                                                              |
+| `RAG_ANON_QUERY_QUESTION`       | `""`                        | Question used by `rag-anon query`                                                                                                                                                                                                |
+| `RAG_ANON_RETRIEVAL_K_DOCS`     | `5`                         | Retrieved chunks per query                                                                                                                                                                                                       |
 
 

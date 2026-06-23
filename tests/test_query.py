@@ -1,7 +1,11 @@
 import pytest
 from langchain_core.documents import Document
 
-from rag_anonymous.query import query_rag, reasoning_flag
+from rag_anonymous.query import (
+    _warn_if_context_may_exceed_num_ctx,
+    query_rag,
+    reasoning_flag,
+)
 
 
 class FakeRetriever:
@@ -125,6 +129,27 @@ class TestQueryRag:
 
         assert vectordb.retriever is not None
         assert vectordb.retriever.invoked_with == "specific question"
+
+
+class TestContextFitGuard:
+    def test_small_context_does_not_warn(self, caplog):
+        with caplog.at_level("WARNING"):
+            _warn_if_context_may_exceed_num_ctx("x" * 100, "q", 8192)
+        assert caplog.records == []
+
+    def test_oversized_context_warns(self, caplog):
+        with caplog.at_level("WARNING"):
+            _warn_if_context_may_exceed_num_ctx("x" * 40000, "q", 8192)
+        assert any(
+            "Context may exceed num_ctx" in r.message for r in caplog.records
+        )
+
+    def test_warning_reports_estimated_and_limit_tokens(self, caplog):
+        with caplog.at_level("WARNING"):
+            _warn_if_context_may_exceed_num_ctx("x" * 40000, "q", 8192)
+        msg = caplog.records[0].message
+        assert "approx_tokens=10064" in msg
+        assert "num_ctx=8192" in msg
 
 
 class TestReasoningFlag:

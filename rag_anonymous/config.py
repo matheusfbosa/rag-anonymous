@@ -11,7 +11,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv()
 load_dotenv(PROJECT_ROOT / ".env")
 
-DEFAULT_ANONYMIZER_ENTITIES = "PERSON,LOCATION,ORGANIZATION,DATE_TIME,MONEY"
+DEFAULT_ANONYMIZER_ENTITIES = "PERSON,DATE_TIME,LOCATION"
 
 
 @dataclass(frozen=True)
@@ -28,6 +28,7 @@ class Settings:
     llm_model: str
     llm_temperature: float
     llm_reasoning: bool
+    llm_num_ctx: int
     anonymizer_entities: tuple[str, ...]
     log_level: str | None
     log_level_http: str | None
@@ -69,6 +70,7 @@ class Settings:
             .strip()
             .lower()
             in ("1", "true", "yes"),
+            llm_num_ctx=int(os.getenv("RAG_ANON_LLM_NUM_CTX", "8192")),
             anonymizer_entities=tuple(entities_csv.split(",")),
             log_level=os.getenv("RAG_ANON_LOG_LEVEL"),
             log_level_http=os.getenv("RAG_ANON_LOG_LEVEL_HTTP"),
