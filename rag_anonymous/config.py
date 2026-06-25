@@ -13,11 +13,14 @@ load_dotenv(PROJECT_ROOT / ".env")
 
 DEFAULT_ANONYMIZER_ENTITIES = "PERSON,DATE_TIME,LOCATION"
 
+DEFAULT_CORPUS_CACHE_SUBDIR = "data/input/corpus"
+
 
 @dataclass(frozen=True)
 class Settings:
     anonymizer_strategy: str
     dataset: str
+    corpus: str
     query_question: str
     chunk_size: int
     chunk_overlap: int
@@ -50,6 +53,7 @@ class Settings:
                 "RAG_ANON_ANONYMIZER_STRATEGY", "offline"
             ),
             dataset=os.getenv("RAG_ANON_CORPUS_DATASET", "dev"),
+            corpus=os.getenv("RAG_ANON_CORPUS", ""),
             query_question=os.getenv("RAG_ANON_QUERY_QUESTION", ""),
             chunk_size=int(os.getenv("RAG_ANON_CHUNK_SIZE", "200")),
             chunk_overlap=int(os.getenv("RAG_ANON_CHUNK_OVERLAP", "0")),
@@ -79,4 +83,9 @@ class Settings:
         )
 
 
-__all__ = ["DEFAULT_ANONYMIZER_ENTITIES", "PROJECT_ROOT", "Settings"]
+__all__ = [
+    "DEFAULT_ANONYMIZER_ENTITIES",
+    "DEFAULT_CORPUS_CACHE_SUBDIR",
+    "PROJECT_ROOT",
+    "Settings",
+]

@@ -97,14 +97,21 @@ class TestBuildDocumentsOndemand:
 
 
 class TestCorpusCachePath:
+    @pytest.fixture(autouse=True)
+    def _set_corpus(self, monkeypatch):
+        monkeypatch.setenv(
+            "RAG_ANON_CORPUS",
+            "https://example.com/echr_{dataset}.json",
+        )
+
     def test_path_layout(self):
         path = _corpus_cache_path("dev")
         assert isinstance(path, Path)
         assert path.name == "echr_dev.json"
-        assert path.parent.name == "text-anonymization-benchmark"
+        assert path.parent.name == "corpus"
         assert path.parent.parent.name == "input"
         assert path.parent.parent.parent.name == "data"
 
-    @pytest.mark.parametrize("split", ["train", "dev", "test"])
-    def test_split_is_interpolated(self, split):
-        assert _corpus_cache_path(split).name == f"echr_{split}.json"
+    @pytest.mark.parametrize("dataset", ["train", "dev", "test"])
+    def test_dataset_is_interpolated(self, dataset):
+        assert _corpus_cache_path(dataset).name == f"echr_{dataset}.json"

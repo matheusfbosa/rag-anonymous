@@ -12,7 +12,7 @@ In **On-Demand** mode, raw text is indexed and only the final LLM answer is anon
 flowchart TB
     subgraph ingest_phase ["Ingest  (rag-anon ingest)"]
         direction TB
-        corpus["TAB ECHR Corpus\n(echr_split.json)"] --> load["Download / Load"]
+        corpus["Corpus\n(RAG_ANON_CORPUS)"] --> load["Download / Load"]
         load --> strat_in{"Strategy?"}
         strat_in -->|offline| presidio_in["Presidio Anonymizer\n(replaces PII with tags)"]
         presidio_in --> splitter_off["Text Splitter\n(RecursiveCharacter)"]
@@ -51,7 +51,7 @@ rag-anonymous/
 │   ├── ingest.py           # Corpus download, anonymization, chunking, indexing
 │   ├── log_config.py       # Logging setup
 │   └── query.py            # RAG chain and retrieval
-├── data/                   # Cached TAB corpus (echr_*.json)
+├── data/                   # Cached corpus downloads (data/input/corpus/)
 ├── chromadb/               # Vector store persistence
 ├── docker-compose.yml
 ├── Makefile
@@ -100,7 +100,7 @@ The CLI takes no flags — all knobs come from environment variables (typically 
 
 ### Ingest corpus
 
-- **Offline:** Anonymizes the TAB corpus before indexing (PII replaced by tags in stored chunks).
+- **Offline:** Anonymizes the corpus before indexing (PII replaced by tags in stored chunks).
 - **On-Demand:** Indexes the corpus as-is (raw text); anonymization is applied to the LLM answer at query time.
 
 Reads `RAG_ANON_ANONYMIZER_STRATEGY` and `RAG_ANON_CORPUS_DATASET` from env:
@@ -143,7 +143,8 @@ RAG_ANON_QUERY_QUESTION="..." rag-anon query
 | `RAG_ANON_CHUNK_OVERLAP`        | `0`                         | Chunk overlap, in tokens (`cl100k_base`)                                                                                                                                                                                         |
 | `RAG_ANON_CHUNK_SIZE`           | `200`                       | Chunk size, in tokens (`cl100k_base`)                                                                                                                                                                                            |
 | `RAG_ANON_CHROMADB_PERSIST_DIR` | `./chromadb`                | Vector store persistence directory                                                                                                                                                                                               |
-| `RAG_ANON_CORPUS_DATASET`       | `dev`                       | TAB split (train/dev/test)                                                                                                                                                                                                       |
+| `RAG_ANON_CORPUS_DATASET`       | `dev`                       | Dataset name interpolated into `{dataset}` in `RAG_ANON_CORPUS` (default TAB datasets: train/dev/test)                                                                                                                           |
+| `RAG_ANON_CORPUS`               | TAB ECHR URL template       | Corpus source as a URL or local path, with optional `{dataset}`. `http(s)://` is downloaded and cached; anything else is read as a local file. Each item needs `text` and `doc_id` fields.                                       |
 | `RAG_ANON_EMBEDDING_MODEL`      | `nomic-embed-text`          | Embeddings model                                                                                                                                                                                                                 |
 | `RAG_ANON_LLM_MODEL`            | `qwen3:8b`                  | Generator model                                                                                                                                                                                                                  |
 | `RAG_ANON_LLM_NUM_CTX`          | `8192`                      | Ollama context window size in tokens. Caps the total tokens (prompt + generated output) sent to the model. Increase if retrieved chunks + prompt exceed the default; lower to reduce VRAM usage.                                 |
@@ -154,6 +155,6 @@ RAG_ANON_QUERY_QUESTION="..." rag-anon query
 | `RAG_ANON_LOG_LEVEL_PRESIDIO`   | `ERROR`                     | Level for `presidio-analyzer` / `presidio-anonymizer` loggers. The default suppresses the noisy startup banner; raise to `INFO` to debug recognizer issues.                                                                      |
 | `RAG_ANON_OLLAMA_BASE_URL`      | `http://localhost:11434`    | Ollama API endpoint                                                                                                                                                                                                              |
 | `RAG_ANON_QUERY_QUESTION`       | `""`                        | Question used by `rag-anon query`                                                                                                                                                                                                |
-| `RAG_ANON_RETRIEVAL_K_DOCS`     | `5`                         | Retrieved chunks per query                                                                                                                                                                                                       |
+| `RAG_ANON_RETRIEVAL_K_DOCS`     | `3`                         | Retrieved chunks per query                                                                                                                                                                                                       |
 
 

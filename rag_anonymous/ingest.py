@@ -8,17 +8,17 @@ from langchain_core.documents import Document
 from langchain_ollama import OllamaEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from rag_anonymous.config import PROJECT_ROOT, Settings
+from rag_anonymous.config import (
+    DEFAULT_CORPUS_CACHE_SUBDIR,
+    PROJECT_ROOT,
+    Settings,
+)
 
 logger = logging.getLogger(__name__)
 
 PROGRESS_EVERY = 10
 
-_DATA_CACHE_DIR = PROJECT_ROOT / "data" / "input" / "text-anonymization-benchmark"
-_TAB_BASE_URL = (
-    "https://raw.githubusercontent.com/NorskRegnesentral/"
-    "text-anonymization-benchmark/refs/heads/master"
-)
+_DATA_CACHE_DIR = PROJECT_ROOT / DEFAULT_CORPUS_CACHE_SUBDIR
 
 
 def ingest_offline(
@@ -34,10 +34,27 @@ def ingest_ondemand(corpus, collection_name="ondemand", persist_dir=None):
     return _ingest(corpus, collection_name, persist_dir, anonymizer=None)
 
 
-def load_corpus(split: str) -> list[dict]:
-    path = _corpus_cache_path(split)
-    if not path.exists():
-        _download_corpus(split)
+def load_corpus(dataset: str) -> list[dict]:
+    corpus = Settings.load().corpus
+    if not corpus:
+        raise SystemExit(
+            "RAG_ANON_CORPUS env var is required "
+            "(set it in .env, e.g. a URL or local path with optional {dataset})."
+        )
+    corpus = corpus.replace("{dataset}", dataset)
+
+    if corpus.startswith(("http://", "https://")):
+        path = _corpus_cache_path(dataset)
+        if not path.exists():
+            _download_corpus(corpus, path)
+    else:
+        path = Path(corpus)
+        if not path.exists():
+            raise FileNotFoundError(
+                f"RAG_ANON_CORPUS points to a missing file: {path}"
+            )
+
+    logger.info("Loading corpus: path=%s", path)
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
@@ -97,14 +114,14 @@ def _chromadb_persist_dir() -> str:
     return Settings.load().chromadb_persist_dir
 
 
-def _corpus_cache_path(split: str) -> Path:
-    return _DATA_CACHE_DIR / f"echr_{split}.json"
+def _corpus_cache_path(dataset: str) -> Path:
+    corpus = Settings.load().corpus.replace("{dataset}", dataset)
+    filename = corpus.rsplit("/", 1)[-1]
+    return _DATA_CACHE_DIR / filename
 
 
-def _download_corpus(split: str) -> None:
-    url = f"{_TAB_BASE_URL}/echr_{split}.json"
-    dest = _corpus_cache_path(split)
-    _DATA_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+def _download_corpus(url: str, dest: Path) -> None:
+    dest.parent.mkdir(parents=True, exist_ok=True)
     logger.info("Ingesting download: url=%s dest=%s", url, dest)
     urllib.request.urlretrieve(url, dest)
 
