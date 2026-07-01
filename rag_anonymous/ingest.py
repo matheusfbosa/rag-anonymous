@@ -26,12 +26,13 @@ def ingest_offline(
     anonymizer,
     collection_name="offline",
     persist_dir=None,
+    dataset=None,
 ):
-    return _ingest(corpus, collection_name, persist_dir, anonymizer=anonymizer)
+    return _ingest(corpus, collection_name, persist_dir, anonymizer=anonymizer, dataset=dataset)
 
 
-def ingest_ondemand(corpus, collection_name="ondemand", persist_dir=None):
-    return _ingest(corpus, collection_name, persist_dir, anonymizer=None)
+def ingest_ondemand(corpus, collection_name="ondemand", persist_dir=None, dataset=None):
+    return _ingest(corpus, collection_name, persist_dir, anonymizer=None, dataset=dataset)
 
 
 def load_corpus(dataset: str) -> list[dict]:
@@ -59,7 +60,7 @@ def load_corpus(dataset: str) -> list[dict]:
         return json.load(f)
 
 
-def _build_documents(corpus, anonymizer=None):
+def _build_documents(corpus, anonymizer=None, dataset=None):
     strategy = "offline" if anonymizer is not None else "ondemand"
     s = Settings.load()
     splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
@@ -88,6 +89,8 @@ def _build_documents(corpus, anonymizer=None):
                 "strategy": strategy,
                 "original_length": len(raw_text),
             }
+            if dataset is not None:
+                metadata["dataset"] = dataset
             if anonymizer is not None:
                 metadata["anonymized_length"] = len(text_to_chunk)
             documents.append(Document(page_content=chunk, metadata=metadata))
@@ -134,7 +137,7 @@ def _embeddings() -> OllamaEmbeddings:
     )
 
 
-def _ingest(corpus, collection_name, persist_dir, anonymizer):
+def _ingest(corpus, collection_name, persist_dir, anonymizer, dataset=None):
     persist_dir = persist_dir or _chromadb_persist_dir()
     label = "anonymized" if anonymizer is not None else "raw"
 
@@ -143,7 +146,7 @@ def _ingest(corpus, collection_name, persist_dir, anonymizer):
         label,
         len(corpus),
     )
-    documents, ids = _build_documents(corpus, anonymizer=anonymizer)
+    documents, ids = _build_documents(corpus, anonymizer=anonymizer, dataset=dataset)
 
     embeddings = _embeddings()
     _wipe_existing_collection(collection_name, persist_dir, embeddings)

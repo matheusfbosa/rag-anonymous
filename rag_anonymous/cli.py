@@ -20,9 +20,9 @@ def cmd_ingest():
     logger.info("Ingesting: strategy=%s dataset=%s", strategy, dataset)
     corpus = load_corpus(dataset)
     if strategy == "ondemand":
-        ingest_ondemand(corpus, collection_name=strategy)
+        ingest_ondemand(corpus, collection_name=strategy, dataset=dataset)
     else:
-        ingest_offline(corpus, Anonymizer(), collection_name=strategy)
+        ingest_offline(corpus, Anonymizer(), collection_name=strategy, dataset=dataset)
 
 
 def cmd_query():
