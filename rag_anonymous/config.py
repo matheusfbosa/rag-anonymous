@@ -11,7 +11,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv()
 load_dotenv(PROJECT_ROOT / ".env")
 
-DEFAULT_ANONYMIZER_ENTITIES = "PERSON,DATE_TIME,LOCATION"
+DEFAULT_ANONYMIZER_ENTITIES = "PERSON"
 
 DEFAULT_CORPUS_CACHE_SUBDIR = "data/input/corpus"
 
@@ -25,8 +25,9 @@ class Settings:
     chunk_size: int
     chunk_overlap: int
     embedding_model: str
+    embedding_num_ctx: int
     ollama_base_url: str
-    chromadb_persist_dir: str
+    es_url: str
     retrieval_k_docs: int
     llm_model: str
     llm_temperature: float
@@ -41,6 +42,9 @@ class Settings:
     def log_startup_env_enabled(self) -> bool:
         raw = (self.log_startup_env or "true").strip().lower()
         return raw not in ("0", "false", "no", "off")
+
+    def es_index(self, collection_name: str, dataset: str | None = None) -> str:
+        return f"{collection_name}_{dataset or self.dataset}".lower()
 
     @classmethod
     def load(cls) -> Settings:
@@ -60,13 +64,13 @@ class Settings:
             embedding_model=os.getenv(
                 "RAG_ANON_EMBEDDING_MODEL", "nomic-embed-text"
             ),
+            embedding_num_ctx=int(
+                os.getenv("RAG_ANON_EMBEDDING_NUM_CTX", "8192")
+            ),
             ollama_base_url=os.getenv(
                 "RAG_ANON_OLLAMA_BASE_URL", "http://localhost:11434"
             ),
-            chromadb_persist_dir=str(
-                PROJECT_ROOT
-                / os.getenv("RAG_ANON_CHROMADB_PERSIST_DIR", "./chromadb")
-            ),
+            es_url=os.getenv("RAG_ANON_ES_URL", "http://localhost:9200"),
             retrieval_k_docs=int(os.getenv("RAG_ANON_RETRIEVAL_K_DOCS", "5")),
             llm_model=os.getenv("RAG_ANON_LLM_MODEL", "qwen3:0.6b"),
             llm_temperature=float(os.getenv("RAG_ANON_LLM_TEMPERATURE", "0.0")),

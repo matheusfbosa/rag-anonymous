@@ -3,8 +3,8 @@ import logging
 import urllib.request
 from pathlib import Path
 
-from langchain_chroma import Chroma
 from langchain_core.documents import Document
+from langchain_elasticsearch import ElasticsearchStore
 from langchain_ollama import OllamaEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
@@ -21,18 +21,12 @@ PROGRESS_EVERY = 10
 _DATA_CACHE_DIR = PROJECT_ROOT / DEFAULT_CORPUS_CACHE_SUBDIR
 
 
-def ingest_offline(
-    corpus,
-    anonymizer,
-    collection_name="offline",
-    persist_dir=None,
-    dataset=None,
-):
-    return _ingest(corpus, collection_name, persist_dir, anonymizer=anonymizer, dataset=dataset)
+def ingest_offline(corpus, anonymizer, collection_name="offline", dataset=None):
+    return _ingest(corpus, collection_name, anonymizer=anonymizer, dataset=dataset)
 
 
-def ingest_ondemand(corpus, collection_name="ondemand", persist_dir=None, dataset=None):
-    return _ingest(corpus, collection_name, persist_dir, anonymizer=None, dataset=dataset)
+def ingest_ondemand(corpus, collection_name="ondemand", dataset=None):
+    return _ingest(corpus, collection_name, anonymizer=None, dataset=dataset)
 
 
 def load_corpus(dataset: str) -> list[dict]:
@@ -113,10 +107,6 @@ def _build_documents(corpus, anonymizer=None, dataset=None):
     return documents, ids
 
 
-def _chromadb_persist_dir() -> str:
-    return Settings.load().chromadb_persist_dir
-
-
 def _corpus_cache_path(dataset: str) -> Path:
     corpus = Settings.load().corpus.replace("{dataset}", dataset)
     filename = corpus.rsplit("/", 1)[-1]
@@ -134,11 +124,13 @@ def _embeddings() -> OllamaEmbeddings:
     return OllamaEmbeddings(
         model=s.embedding_model,
         base_url=s.ollama_base_url,
+        num_ctx=s.embedding_num_ctx,
     )
 
 
-def _ingest(corpus, collection_name, persist_dir, anonymizer, dataset=None):
-    persist_dir = persist_dir or _chromadb_persist_dir()
+def _ingest(corpus, collection_name, anonymizer, dataset=None):
+    s = Settings.load()
+    index = s.es_index(collection_name, dataset)
     label = "anonymized" if anonymizer is not None else "raw"
 
     logger.info(
@@ -149,47 +141,47 @@ def _ingest(corpus, collection_name, persist_dir, anonymizer, dataset=None):
     documents, ids = _build_documents(corpus, anonymizer=anonymizer, dataset=dataset)
 
     embeddings = _embeddings()
-    _wipe_existing_collection(collection_name, persist_dir, embeddings)
+    _wipe_existing_index(index, s.es_url)
 
     logger.info(
-        "Ingesting chunks: chunk_count=%d persist_dir=%s",
+        "Ingesting chunks: chunk_count=%d es_url=%s index=%s",
         len(documents),
-        persist_dir,
+        s.es_url,
+        index,
     )
-    vectordb = Chroma.from_documents(
-        documents=documents,
-        ids=ids,
+    vectordb = ElasticsearchStore(
+        index_name=index,
         embedding=embeddings,
-        collection_name=collection_name,
-        persist_directory=persist_dir,
+        es_url=s.es_url,
     )
+    vectordb.add_documents(documents, ids=ids)
 
+    vectordb.client.indices.refresh(index=index)
     logger.info(
         "Ingested: chunks=%d",
-        vectordb._collection.count(),
+        vectordb.client.count(index=index)["count"],
     )
     return vectordb
 
 
-def _wipe_existing_collection(collection_name: str, persist_dir: str, embeddings) -> None:
-    existing = Chroma(
-        collection_name=collection_name,
-        embedding_function=embeddings,
-        persist_directory=persist_dir,
-    )
+def _wipe_existing_index(index: str, es_url: str) -> None:
+    from elasticsearch import Elasticsearch
+
+    client = Elasticsearch(es_url)
     try:
-        prior = existing._collection.count()
+        exists = client.indices.exists(index=index)
     except Exception as exc:
         logger.warning(
-            "Could not read prior collection size: name=%s error=%s",
-            collection_name,
+            "Could not check prior index: index=%s error=%s",
+            index,
             exc,
         )
         return
-    if prior:
+    if exists:
+        prior = client.count(index=index)["count"]
         logger.info(
-            "Ingesting drop_collection: name=%s prior_chunks=%d reason=reingest",
-            collection_name,
+            "Ingesting drop_index: index=%s prior_chunks=%d reason=reingest",
+            index,
             prior,
         )
-        existing.delete_collection()
+        client.indices.delete(index=index)

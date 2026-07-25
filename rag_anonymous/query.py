@@ -1,8 +1,8 @@
 import logging
 
-from langchain_chroma import Chroma
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_elasticsearch import DenseVectorStrategy, ElasticsearchStore
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 
 from rag_anonymous.config import Settings
@@ -38,19 +38,21 @@ def create_chain(llm=None):
     return prompt | llm | StrOutputParser()
 
 
-def load_vectordb(collection_name="offline", persist_dir=None):
+def load_vectordb(collection_name="offline"):
     s = Settings.load()
-    persist_dir = persist_dir or s.chromadb_persist_dir
+    index = s.es_index(collection_name)
     embeddings = OllamaEmbeddings(
         model=s.embedding_model,
         base_url=s.ollama_base_url,
+        num_ctx=s.embedding_num_ctx,
     )
-    vectordb = Chroma(
-        collection_name=collection_name,
-        embedding_function=embeddings,
-        persist_directory=persist_dir,
+    vectordb = ElasticsearchStore(
+        index_name=index,
+        embedding=embeddings,
+        es_url=s.es_url,
+        strategy=DenseVectorStrategy(hybrid=True, rrf=False),
     )
-    _log_collection_health(vectordb, collection_name)
+    _log_collection_health(vectordb, index)
     return vectordb
 
 
@@ -100,51 +102,30 @@ def _warn_if_context_may_exceed_num_ctx(context_text, question, num_ctx):
         )
 
 
-def _log_collection_health(vectordb, collection_name):
+def _log_collection_health(vectordb, index):
     try:
-        count = vectordb._collection.count()
+        exists = vectordb.client.indices.exists(index=index)
     except Exception as exc:
         logger.warning(
-            "Could not read collection count: name=%s error=%s",
-            collection_name,
+            "Could not read index: index=%s error=%s",
+            index,
             exc,
         )
         return
 
+    if not exists:
+        logger.warning(
+            "Index missing: index=%s (run `rag-anon ingest` first)", index
+        )
+        return
+
+    count = vectordb.client.count(index=index)["count"]
     if count == 0:
-        logger.warning("Collection empty: name=%s", collection_name)
+        logger.warning("Index empty: index=%s", index)
         return
 
-    try:
-        result = vectordb._collection.get(include=["metadatas"])
-        chunk_ids = [
-            (m or {}).get("chunk_id") for m in (result.get("metadatas") or [])
-        ]
-        unique = len({c for c in chunk_ids if c})
-    except Exception as exc:
-        logger.warning(
-            "Could not inspect collection metadata: name=%s error=%s",
-            collection_name,
-            exc,
-        )
-        logger.info(
-            "Loaded vectordb: collection=%s chunks=%d metadata=skipped",
-            collection_name,
-            count,
-        )
-        return
-
-    if unique and count != unique:
-        logger.warning(
-            "Collection chunk_id duplication: name=%s chunks=%d chunk_ids_unique=%d",
-            collection_name,
-            count,
-            unique,
-        )
-    else:
-        logger.info(
-            "Loaded vectordb: collection=%s chunks=%d chunk_ids_unique=%d",
-            collection_name,
-            count,
-            unique,
-        )
+    logger.info(
+        "Loaded vectordb: index=%s chunks=%d",
+        index,
+        count,
+    )

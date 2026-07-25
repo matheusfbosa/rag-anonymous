@@ -19,12 +19,12 @@ flowchart TB
         strat_in -->|ondemand| splitter_on["Text Splitter\n(RecursiveCharacter)"]
         splitter_off --> embed["Ollama Embeddings\n(RAG_ANON_EMBEDDING_MODEL)"]
         splitter_on --> embed
-        embed --> chromadb[("ChromaDB\n(offline or ondemand collection)")]
+        embed --> es[("Elasticsearch\n(offline or ondemand index)")]
     end
 
     subgraph query_phase ["Query  (rag-anon query)"]
         direction TB
-        question["User Question"] --> retriever["Chroma Retriever\n(top-k chunks)"]
+        question["User Question"] --> retriever["Elasticsearch Retriever\n(top-k chunks)"]
         retriever --> prompt_builder["Prompt Builder\n(context + question)"]
         prompt_builder --> llm["ChatOllama LLM\n(RAG_ANON_LLM_MODEL)"]
         llm --> strat_out{"Strategy?"}
@@ -33,10 +33,8 @@ flowchart TB
         presidio_out --> answer
     end
 
-    chromadb --> retriever
+    es --> retriever
 ```
-
-
 
 ## Project structure
 
@@ -52,8 +50,8 @@ rag-anonymous/
 │   ├── log_config.py       # Logging setup
 │   └── query.py            # RAG chain and retrieval
 ├── data/                   # Cached corpus downloads (data/input/corpus/)
-├── chromadb/               # Vector store persistence
-├── docker-compose.yml
+├── docker-compose.yml         # Elasticsearch + Kibana
+├── docker-compose.ollama.yml  # Elasticsearch + Kibana + Ollama
 ├── Makefile
 └── .env.example
 ```
@@ -69,16 +67,17 @@ The pipeline talks to Ollama over its HTTP API at `RAG_ANON_OLLAMA_BASE_URL` (de
 ```sh
 ollama serve                      # or just launch the Ollama desktop app
 make ollama-pull-models           # pull models via the host CLI
+make docker-up                    # start Elasticsearch + Kibana (Ollama runs natively)
 ```
 
 Both paths expose the same API on port `11434`, so the rest of the pipeline doesn't need to know which one is running. **Don't run both at once** — they'll race for the port and the second one will fail to bind.
 
-**Option B — Docker** (uses `[docker-compose.yml](./docker-compose.yml)`):
+**Option B — Docker** (uses `[docker-compose.ollama.yml](./docker-compose.ollama.yml)` — Ollama alongside Elasticsearch + Kibana):
 
 ```sh
-make docker-up                    # start the ollama container
+make docker-ollama-up             # start Ollama + Elasticsearch + Kibana
 make docker-ollama-pull-models    # pull models inside the container
-make docker-down                  # stop the container when done
+make docker-ollama-down           # stop the containers when done
 ```
 
 ### 2. Python package
@@ -119,7 +118,7 @@ rag-anon ingest
 
 ### Query
 
-Reads `RAG_ANON_ANONYMIZER_STRATEGY`, `RAG_ANON_RETRIEVAL_K_DOCS`, and `RAG_ANON_QUERY_QUESTION` from env. Use the same strategy as at ingest time so the correct collection is queried. For `ondemand`, the generated answer is anonymized before being returned.
+Reads `RAG_ANON_ANONYMIZER_STRATEGY`, `RAG_ANON_RETRIEVAL_K_DOCS`, and `RAG_ANON_QUERY_QUESTION` from env. Use the same strategy as at ingest time so the correct index is queried. For `ondemand`, the generated answer is anonymized before being returned.
 
 ```sh
 RAG_ANON_QUERY_QUESTION="What did the applicant complain about in case no. 13146/02?" make query
@@ -142,10 +141,11 @@ RAG_ANON_QUERY_QUESTION="..." rag-anon query
 | `RAG_ANON_ANONYMIZER_STRATEGY`  | `offline`                   | Anonymization strategy (`offline` or `ondemand`)                                                                                                                                                                                 |
 | `RAG_ANON_CHUNK_OVERLAP`        | `0`                         | Chunk overlap, in tokens (`cl100k_base`)                                                                                                                                                                                         |
 | `RAG_ANON_CHUNK_SIZE`           | `200`                       | Chunk size, in tokens (`cl100k_base`)                                                                                                                                                                                            |
-| `RAG_ANON_CHROMADB_PERSIST_DIR` | `./chromadb`                | Vector store persistence directory                                                                                                                                                                                               |
-| `RAG_ANON_CORPUS_DATASET`       | `dev`                       | Dataset name interpolated into `{dataset}` in `RAG_ANON_CORPUS` (default TAB datasets: train/dev/test)                                                                                                                           |
 | `RAG_ANON_CORPUS`               | TAB ECHR URL template       | Corpus source as a URL or local path, with optional `{dataset}`. `http(s)://` is downloaded and cached; anything else is read as a local file. Each item needs `text` and `doc_id` fields.                                       |
+| `RAG_ANON_CORPUS_DATASET`       | `dev`                       | Dataset name interpolated into `{dataset}` in `RAG_ANON_CORPUS` (default TAB datasets: train/dev/test)                                                                                                                           |
 | `RAG_ANON_EMBEDDING_MODEL`      | `nomic-embed-text`          | Embeddings model                                                                                                                                                                                                                 |
+| `RAG_ANON_EMBEDDING_NUM_CTX`    | `8192`                      | Ollama context window for the embedding model, in tokens. Used at ingest time to embed each chunk; must be ≥ `RAG_ANON_CHUNK_SIZE` or chunks are silently truncated before embedding. Distinct from `RAG_ANON_LLM_NUM_CTX`.       |
+| `RAG_ANON_ES_URL`               | `http://localhost:9200`     | Elasticsearch base URL                                                                                                                                                                                                           |
 | `RAG_ANON_LLM_MODEL`            | `qwen3:8b`                  | Generator model                                                                                                                                                                                                                  |
 | `RAG_ANON_LLM_NUM_CTX`          | `8192`                      | Ollama context window size in tokens. Caps the total tokens (prompt + generated output) sent to the model. Increase if retrieved chunks + prompt exceed the default; lower to reduce VRAM usage.                                 |
 | `RAG_ANON_LLM_REASONING`        | `false`                     | Maps to `ChatOllama(reasoning=...)`. `false` disables thinking via Ollama's `think` flag (faster, cleaner output). Set to `true` only when running a reasoning-capable model and you want `<think>` content captured separately. |
@@ -156,5 +156,3 @@ RAG_ANON_QUERY_QUESTION="..." rag-anon query
 | `RAG_ANON_OLLAMA_BASE_URL`      | `http://localhost:11434`    | Ollama API endpoint                                                                                                                                                                                                              |
 | `RAG_ANON_QUERY_QUESTION`       | `""`                        | Question used by `rag-anon query`                                                                                                                                                                                                |
 | `RAG_ANON_RETRIEVAL_K_DOCS`     | `3`                         | Retrieved chunks per query                                                                                                                                                                                                       |
-
-

@@ -12,7 +12,7 @@ DEFAULT_PRESIDIO_LEVEL = "ERROR"
 LOG_FORMAT = "%(asctime)s %(message)s"
 DATE_FORMAT = "%H:%M:%S"
 
-_HTTP_LOGGERS = ("httpx", "httpcore", "urllib3")
+_HTTP_LOGGERS = ("httpx", "httpcore", "urllib3", "elastic_transport")
 _PRESIDIO_LOGGERS = ("presidio-analyzer", "presidio-anonymizer")
 
 _ENV_PREFIXES = ("RAG_ANON_", "RAG_METRICS_")

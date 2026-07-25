@@ -10,6 +10,12 @@ docker-clean:
 	docker compose pull
 	docker compose up -d
 
+docker-ollama-up:
+	docker compose -f docker-compose.ollama.yml up -d
+
+docker-ollama-down:
+	docker compose -f docker-compose.ollama.yml down
+
 docker-ollama-pull-models:
 	docker exec -it ollama ollama pull nomic-embed-text
 	docker exec -it ollama ollama pull qwen3:8b
