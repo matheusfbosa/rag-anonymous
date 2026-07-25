@@ -18,11 +18,13 @@ docker-ollama-down:
 
 docker-ollama-pull-models:
 	docker exec -it ollama ollama pull nomic-embed-text
+	docker exec -it ollama ollama pull qwen3:4b
 	docker exec -it ollama ollama pull qwen3:8b
 	docker exec -it ollama ollama pull gemma4:12b
 
 ollama-pull-models:
 	ollama pull nomic-embed-text
+	ollama pull qwen3:4b
 	ollama pull qwen3:8b
 	ollama pull gemma4:12b
 
