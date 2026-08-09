@@ -59,7 +59,7 @@ class Settings:
             dataset=os.getenv("RAG_ANON_CORPUS_DATASET", "dev"),
             corpus=os.getenv("RAG_ANON_CORPUS", ""),
             query_question=os.getenv("RAG_ANON_QUERY_QUESTION", ""),
-            chunk_size=int(os.getenv("RAG_ANON_CHUNK_SIZE", "200")),
+            chunk_size=int(os.getenv("RAG_ANON_CHUNK_SIZE", "7000")),
             chunk_overlap=int(os.getenv("RAG_ANON_CHUNK_OVERLAP", "0")),
             embedding_model=os.getenv(
                 "RAG_ANON_EMBEDDING_MODEL", "nomic-embed-text"
