@@ -50,8 +50,7 @@ rag-anonymous/
 │   ├── log_config.py       # Logging setup
 │   └── query.py            # RAG chain and retrieval
 ├── data/                   # Cached corpus downloads (data/input/corpus/)
-├── docker-compose.yml         # Elasticsearch + Kibana
-├── docker-compose.ollama.yml  # Elasticsearch + Kibana + Ollama
+├── docker-compose.yml         # Elasticsearch (+ optional ollama / kibana profiles)
 ├── Makefile
 └── .env.example
 ```
@@ -67,17 +66,31 @@ The pipeline talks to Ollama over its HTTP API at `RAG_ANON_OLLAMA_BASE_URL` (de
 ```sh
 ollama serve                      # or just launch the Ollama desktop app
 make ollama-pull-models           # pull models via the host CLI
-make docker-up                    # start Elasticsearch + Kibana (Ollama runs natively)
+make docker-up                    # Elasticsearch only
+```
+
+**Option B — Docker** (`ollama` compose profile):
+
+```sh
+make docker-up-ollama             # Ollama + Elasticsearch
+make docker-ollama-pull-models    # pull models inside the container
 ```
 
 Both paths expose the same API on port `11434`, so the rest of the pipeline doesn't need to know which one is running. **Don't run both at once** — they'll race for the port and the second one will fail to bind.
 
-**Option B — Docker** (uses `[docker-compose.ollama.yml](./docker-compose.ollama.yml)` — Ollama alongside Elasticsearch + Kibana):
+### Docker Compose
+
+Elasticsearch always starts with `make docker-up`. Ollama and Kibana are optional [compose profiles](https://docs.docker.com/compose/how-tos/profiles/):
 
 ```sh
-make docker-ollama-up             # start Ollama + Elasticsearch + Kibana
-make docker-ollama-pull-models    # pull models inside the container
-make docker-ollama-down           # stop the containers when done
+make docker-up                    # Elasticsearch only
+make docker-up-ollama             # + Ollama
+make docker-up-kibana             # + Kibana (http://localhost:5601)
+make docker-up-all                # Elasticsearch + Ollama + Kibana
+
+make docker-ollama-down           # stop Ollama only
+make docker-kibana-down           # stop Kibana only
+make docker-down                  # stop and remove all running compose services
 ```
 
 ### 2. Python package

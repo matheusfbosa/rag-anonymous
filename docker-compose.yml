@@ -23,6 +23,7 @@ services:
     restart: unless-stopped
 
   kibana:
+    profiles: ["kibana"]
     image: docker.elastic.co/kibana/kibana:8.19.4
     container_name: kibana
     ports:
@@ -32,6 +33,16 @@ services:
     depends_on:
       elasticsearch:
         condition: service_healthy
+    restart: unless-stopped
+
+  ollama:
+    profiles: ["ollama"]
+    image: ollama/ollama:0.23.0
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./ollama:/root/.ollama
     restart: unless-stopped
 
 volumes:

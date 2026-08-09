@@ -1,6 +1,21 @@
 docker-up:
 	docker compose up -d
 
+docker-up-ollama:
+	docker compose --profile ollama up -d
+
+docker-up-kibana:
+	docker compose --profile kibana up -d kibana
+
+docker-up-all:
+	docker compose --profile ollama --profile kibana up -d
+
+docker-ollama-down:
+	docker compose stop ollama
+
+docker-kibana-down:
+	docker compose stop kibana
+
 docker-down:
 	docker compose down
 
@@ -9,12 +24,6 @@ docker-clean:
 	docker compose rm -f
 	docker compose pull
 	docker compose up -d
-
-docker-ollama-up:
-	docker compose -f docker-compose.ollama.yml up -d
-
-docker-ollama-down:
-	docker compose -f docker-compose.ollama.yml down
 
 docker-ollama-pull-models:
 	docker exec -it ollama ollama pull nomic-embed-text
