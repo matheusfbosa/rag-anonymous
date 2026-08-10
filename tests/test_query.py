@@ -19,7 +19,7 @@ class FakeRetriever:
         return self._docs
 
 
-class FakeVectorDB:
+class FakeRetrievalStore:
     def __init__(self, docs: list[Document]) -> None:
         self._docs = docs
         self.k: int | None = None
@@ -62,15 +62,15 @@ def retrieved_docs() -> list[Document]:
 class TestQueryRag:
     def test_response_round_trips(self, retrieved_docs):
         chain = FakeChain(response="generated answer")
-        vectordb = FakeVectorDB(retrieved_docs)
+        store = FakeRetrievalStore(retrieved_docs)
 
-        result = query_rag(chain, vectordb, "what is X?", k_docs=3)
+        result = query_rag(chain, store, "what is X?", k_docs=3)
 
         assert result["question"] == "what is X?"
         assert result["response"] == "generated answer"
 
     def test_retrieved_chunks_carry_doc_and_chunk_ids(self, retrieved_docs):
-        result = query_rag(FakeChain(), FakeVectorDB(retrieved_docs), "q", k_docs=3)
+        result = query_rag(FakeChain(), FakeRetrievalStore(retrieved_docs), "q", k_docs=3)
 
         assert len(result["retrieved_chunks"]) == 3
         assert [c["doc_id"] for c in result["retrieved_chunks"]] == ["a", "a", "b"]
@@ -86,12 +86,12 @@ class TestQueryRag:
         ]
 
     def test_docs_unique_deduplicates(self, retrieved_docs):
-        result = query_rag(FakeChain(), FakeVectorDB(retrieved_docs), "q", k_docs=3)
+        result = query_rag(FakeChain(), FakeRetrievalStore(retrieved_docs), "q", k_docs=3)
         assert result["docs_unique"] == 2
 
     def test_context_joined_with_separator(self, retrieved_docs):
         chain = FakeChain()
-        query_rag(chain, FakeVectorDB(retrieved_docs), "q", k_docs=3)
+        query_rag(chain, FakeRetrievalStore(retrieved_docs), "q", k_docs=3)
 
         assert chain.payload is not None
         assert chain.payload["question"] == "q"
@@ -101,35 +101,35 @@ class TestQueryRag:
 
     def test_k_docs_argument_overrides_env(self, retrieved_docs, monkeypatch):
         monkeypatch.setenv("RAG_ANON_RETRIEVAL_K_DOCS", "99")
-        vectordb = FakeVectorDB(retrieved_docs)
+        store = FakeRetrievalStore(retrieved_docs)
 
-        query_rag(FakeChain(), vectordb, "q", k_docs=7)
+        query_rag(FakeChain(), store, "q", k_docs=7)
 
-        assert vectordb.k == 7
+        assert store.k == 7
 
     def test_k_docs_falls_back_to_env(self, retrieved_docs, monkeypatch):
         monkeypatch.setenv("RAG_ANON_RETRIEVAL_K_DOCS", "11")
-        vectordb = FakeVectorDB(retrieved_docs)
+        store = FakeRetrievalStore(retrieved_docs)
 
-        query_rag(FakeChain(), vectordb, "q")
+        query_rag(FakeChain(), store, "q")
 
-        assert vectordb.k == 11
+        assert store.k == 11
 
     def test_k_docs_default_is_five(self, retrieved_docs, monkeypatch):
         monkeypatch.delenv("RAG_ANON_RETRIEVAL_K_DOCS", raising=False)
-        vectordb = FakeVectorDB(retrieved_docs)
+        store = FakeRetrievalStore(retrieved_docs)
 
-        query_rag(FakeChain(), vectordb, "q")
+        query_rag(FakeChain(), store, "q")
 
-        assert vectordb.k == 5
+        assert store.k == 5
 
     def test_retriever_receives_question(self, retrieved_docs):
-        vectordb = FakeVectorDB(retrieved_docs)
+        store = FakeRetrievalStore(retrieved_docs)
 
-        query_rag(FakeChain(), vectordb, "specific question", k_docs=3)
+        query_rag(FakeChain(), store, "specific question", k_docs=3)
 
-        assert vectordb.retriever is not None
-        assert vectordb.retriever.invoked_with == "specific question"
+        assert store.retriever is not None
+        assert store.retriever.invoked_with == "specific question"
 
 
 class TestContextFitGuard:
@@ -202,7 +202,7 @@ class TestQueryRagTimeout:
                 raise TimeoutError("deadline exceeded")
 
         with caplog.at_level("WARNING"):
-            result = query_rag(SlowChain(), FakeVectorDB(retrieved_docs), "q", k_docs=3)
+            result = query_rag(SlowChain(), FakeRetrievalStore(retrieved_docs), "q", k_docs=3)
 
         assert result["response"] == ""
         assert result["retrieved_chunks"]

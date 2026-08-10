@@ -149,19 +149,19 @@ def _ingest(corpus, collection_name, anonymizer, dataset=None):
         s.es_url,
         index,
     )
-    vectordb = ElasticsearchStore(
+    store = ElasticsearchStore(
         index_name=index,
         embedding=embeddings,
         es_url=s.es_url,
     )
-    vectordb.add_documents(documents, ids=ids)
+    store.add_documents(documents, ids=ids)
 
-    vectordb.client.indices.refresh(index=index)
+    store.client.indices.refresh(index=index)
     logger.info(
         "Ingested: chunks=%d",
-        vectordb.client.count(index=index)["count"],
+        store.client.count(index=index)["count"],
     )
-    return vectordb
+    return store
 
 
 def _wipe_existing_index(index: str, es_url: str) -> None:

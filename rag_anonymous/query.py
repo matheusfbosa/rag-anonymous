@@ -46,7 +46,7 @@ def create_chain(llm=None):
     return prompt | llm | StrOutputParser()
 
 
-def load_vectordb(collection_name="offline"):
+def load_retriever(collection_name="offline"):
     s = Settings.load()
     index = s.es_index(collection_name)
     embeddings = OllamaEmbeddings(
@@ -54,21 +54,21 @@ def load_vectordb(collection_name="offline"):
         base_url=s.ollama_base_url,
         num_ctx=s.embedding_num_ctx,
     )
-    vectordb = ElasticsearchStore(
+    store = ElasticsearchStore(
         index_name=index,
         embedding=embeddings,
         es_url=s.es_url,
         strategy=DenseVectorStrategy(hybrid=True, rrf=False),
     )
-    _log_collection_health(vectordb, index)
-    return vectordb
+    _log_collection_health(store, index)
+    return store
 
 
-def query_rag(chain, vectordb, question, k_docs=None):
+def query_rag(chain, retrieval_store, question, k_docs=None):
     s = Settings.load()
     if k_docs is None:
         k_docs = s.retrieval_k_docs
-    retriever = vectordb.as_retriever(search_kwargs={"k": k_docs})
+    retriever = retrieval_store.as_retriever(search_kwargs={"k": k_docs})
     chunks = retriever.invoke(question)
     context_text = "\n\n---\n\n".join(doc.page_content for doc in chunks)
 
@@ -146,9 +146,9 @@ def _warn_if_context_may_exceed_num_ctx(context_text, question, num_ctx):
         )
 
 
-def _log_collection_health(vectordb, index):
+def _log_collection_health(store, index):
     try:
-        exists = vectordb.client.indices.exists(index=index)
+        exists = store.client.indices.exists(index=index)
     except Exception as exc:
         logger.warning(
             "Could not read index: index=%s error=%s",
@@ -163,13 +163,13 @@ def _log_collection_health(vectordb, index):
         )
         return
 
-    count = vectordb.client.count(index=index)["count"]
+    count = store.client.count(index=index)["count"]
     if count == 0:
         logger.warning("Index empty: index=%s", index)
         return
 
     logger.info(
-        "Loaded vectordb: index=%s chunks=%d",
+        "Connected to Elasticsearch: index=%s chunks=%d",
         index,
         count,
     )

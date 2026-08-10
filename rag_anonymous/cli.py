@@ -5,7 +5,7 @@ from rag_anonymous.anonymizer import Anonymizer
 from rag_anonymous.config import Settings
 from rag_anonymous.ingest import ingest_offline, ingest_ondemand, load_corpus
 from rag_anonymous.log_config import configure_logging
-from rag_anonymous.query import create_chain, load_vectordb, query_rag
+from rag_anonymous.query import create_chain, load_retriever, query_rag
 
 logger = logging.getLogger(__name__)
 
@@ -40,9 +40,9 @@ def cmd_query():
     logger.info("Querying: strategy=%s k_docs=%d", strategy, k_docs)
     logger.info("Querying: question=%s", question)
 
-    vectordb = load_vectordb(collection_name=strategy)
+    retrieval_store = load_retriever(collection_name=strategy)
     chain = create_chain()
-    result = query_rag(chain, vectordb, question, k_docs=k_docs)
+    result = query_rag(chain, retrieval_store, question, k_docs=k_docs)
 
     if strategy == "ondemand":
         result["response"] = Anonymizer().anonymize(_response_text(result["response"]))

@@ -6,7 +6,7 @@ from rag_anonymous.log_config import configure_logging
 from rag_anonymous.query import (
     build_llm,
     create_chain,
-    load_vectordb,
+    load_retriever,
     query_rag,
     reasoning_flag,
 )
@@ -19,7 +19,7 @@ __all__ = [
     "ingest_offline",
     "ingest_ondemand",
     "load_corpus",
-    "load_vectordb",
+    "load_retriever",
     "query_rag",
     "reasoning_flag",
 ]
