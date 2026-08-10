@@ -1,4 +1,5 @@
 import logging
+import time
 
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -20,7 +21,12 @@ _PROMPT_OVERHEAD_TOKENS = 64
 _CTX_WARN_RATIO = 0.9
 
 
-def build_llm(model_name: str | None = None) -> ChatOllama:
+def build_llm(
+    model_name: str | None = None,
+    *,
+    num_predict: int | None = None,
+    timeout: float | None = None,
+) -> ChatOllama:
     s = Settings.load()
     return ChatOllama(
         model=model_name or s.llm_model,
@@ -28,6 +34,8 @@ def build_llm(model_name: str | None = None) -> ChatOllama:
         temperature=s.llm_temperature,
         reasoning=s.llm_reasoning,
         num_ctx=s.llm_num_ctx,
+        num_predict=num_predict if num_predict is not None else s.llm_num_predict,
+        timeout=timeout if timeout is not None else s.llm_timeout_sec,
     )
 
 
@@ -66,7 +74,33 @@ def query_rag(chain, vectordb, question, k_docs=None):
 
     _warn_if_context_may_exceed_num_ctx(context_text, question, s.llm_num_ctx)
 
-    response = chain.invoke({"context": context_text, "question": question})
+    started = time.perf_counter()
+    try:
+        response = chain.invoke({"context": context_text, "question": question})
+    except Exception as exc:
+        elapsed = time.perf_counter() - started
+        if is_llm_timeout(exc):
+            logger.warning(
+                "LLM invoke timed out after %.1fs (limit=%ss): %.80s",
+                elapsed,
+                s.llm_timeout_sec,
+                question,
+            )
+            response = ""
+        else:
+            logger.error(
+                "LLM invoke failed after %.1fs: %s — %.80s",
+                elapsed,
+                exc.__class__.__name__,
+                question,
+            )
+            raise
+    else:
+        elapsed = time.perf_counter() - started
+        if elapsed > 60:
+            logger.warning("LLM invoke slow: %.1fs — %.80s", elapsed, question)
+        else:
+            logger.debug("LLM invoke completed in %.1fs", elapsed)
 
     return {
         "question": question,
@@ -85,6 +119,16 @@ def query_rag(chain, vectordb, question, k_docs=None):
 
 def reasoning_flag() -> bool:
     return Settings.load().llm_reasoning
+
+
+def is_llm_timeout(exc: BaseException) -> bool:
+    if isinstance(exc, TimeoutError):
+        return True
+    name = exc.__class__.__name__
+    if "Timeout" in name:
+        return True
+    cause = exc.__cause__
+    return cause is not None and is_llm_timeout(cause)
 
 
 def _warn_if_context_may_exceed_num_ctx(context_text, question, num_ctx):

@@ -3,6 +3,7 @@ from langchain_core.documents import Document
 
 from rag_anonymous.query import (
     _warn_if_context_may_exceed_num_ctx,
+    is_llm_timeout,
     query_rag,
     reasoning_flag,
 )
@@ -170,3 +171,39 @@ class TestReasoningFlag:
     def test_whitespace_is_stripped(self, monkeypatch):
         monkeypatch.setenv("RAG_ANON_LLM_REASONING", "  true  ")
         assert reasoning_flag() is True
+
+
+class TestLlmTimeoutDetection:
+    def test_timeout_error(self):
+        assert is_llm_timeout(TimeoutError()) is True
+
+    def test_named_timeout_exception(self):
+        class ReadTimeout(Exception):
+            pass
+
+        assert is_llm_timeout(ReadTimeout("boom")) is True
+
+    def test_wrapped_timeout(self):
+        try:
+            raise TimeoutError("inner")
+        except TimeoutError as inner:
+            outer = RuntimeError("outer")
+            outer.__cause__ = inner
+            assert is_llm_timeout(outer) is True
+
+    def test_non_timeout(self):
+        assert is_llm_timeout(ValueError("nope")) is False
+
+
+class TestQueryRagTimeout:
+    def test_timeout_returns_empty_response(self, retrieved_docs, caplog):
+        class SlowChain:
+            def invoke(self, payload: dict) -> str:
+                raise TimeoutError("deadline exceeded")
+
+        with caplog.at_level("WARNING"):
+            result = query_rag(SlowChain(), FakeVectorDB(retrieved_docs), "q", k_docs=3)
+
+        assert result["response"] == ""
+        assert result["retrieved_chunks"]
+        assert any("timed out" in r.message for r in caplog.records)

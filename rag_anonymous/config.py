@@ -33,6 +33,8 @@ class Settings:
     llm_temperature: float
     llm_reasoning: bool
     llm_num_ctx: int
+    llm_num_predict: int
+    llm_timeout_sec: float
     anonymizer_entities: tuple[str, ...]
     log_level: str | None
     log_level_http: str | None
@@ -79,6 +81,8 @@ class Settings:
             .lower()
             in ("1", "true", "yes"),
             llm_num_ctx=int(os.getenv("RAG_ANON_LLM_NUM_CTX", "8192")),
+            llm_num_predict=int(os.getenv("RAG_ANON_LLM_NUM_PREDICT", "512")),
+            llm_timeout_sec=float(os.getenv("RAG_ANON_LLM_TIMEOUT_SEC", "180")),
             anonymizer_entities=tuple(entities_csv.split(",")),
             log_level=os.getenv("RAG_ANON_LOG_LEVEL"),
             log_level_http=os.getenv("RAG_ANON_LOG_LEVEL_HTTP"),
