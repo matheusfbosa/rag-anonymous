@@ -3,7 +3,9 @@ from langchain_core.documents import Document
 
 from rag_anonymous.query import (
     _warn_if_context_may_exceed_num_ctx,
+    is_llm_response_error,
     is_llm_timeout,
+    is_recoverable_llm_error,
     query_rag,
     reasoning_flag,
 )
@@ -195,6 +197,36 @@ class TestLlmTimeoutDetection:
         assert is_llm_timeout(ValueError("nope")) is False
 
 
+class TestLlmResponseErrorDetection:
+    def test_response_error(self):
+        class ResponseError(Exception):
+            pass
+
+        assert is_llm_response_error(ResponseError("CUDA OOM")) is True
+
+    def test_wrapped_response_error(self):
+        class ResponseError(Exception):
+            pass
+
+        try:
+            raise ResponseError("inner")
+        except ResponseError as inner:
+            outer = RuntimeError("outer")
+            outer.__cause__ = inner
+            assert is_llm_response_error(outer) is True
+
+    def test_non_response_error(self):
+        assert is_llm_response_error(ValueError("nope")) is False
+
+    def test_recoverable_includes_timeout_and_response_error(self):
+        class ResponseError(Exception):
+            pass
+
+        assert is_recoverable_llm_error(TimeoutError()) is True
+        assert is_recoverable_llm_error(ResponseError("boom")) is True
+        assert is_recoverable_llm_error(ValueError("nope")) is False
+
+
 class TestQueryRagTimeout:
     def test_timeout_returns_empty_response(self, retrieved_docs, caplog):
         class SlowChain:
@@ -206,4 +238,23 @@ class TestQueryRagTimeout:
 
         assert result["response"] == ""
         assert result["retrieved_chunks"]
-        assert any("timed out" in r.message for r in caplog.records)
+        assert any("LLM invoke failed" in r.message for r in caplog.records)
+
+
+class TestQueryRagResponseError:
+    def test_response_error_returns_empty_response(self, retrieved_docs, caplog):
+        class ResponseError(Exception):
+            pass
+
+        class BrokenChain:
+            def invoke(self, payload: dict) -> str:
+                raise ResponseError("CUDA error: out of memory")
+
+        with caplog.at_level("WARNING"):
+            result = query_rag(
+                BrokenChain(), FakeRetrievalStore(retrieved_docs), "q", k_docs=3
+            )
+
+        assert result["response"] == ""
+        assert result["retrieved_chunks"]
+        assert any("LLM invoke failed" in r.message for r in caplog.records)

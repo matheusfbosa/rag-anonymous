@@ -79,13 +79,14 @@ def query_rag(chain, retrieval_store, question, k_docs=None):
         response = chain.invoke({"context": context_text, "question": question})
     except Exception as exc:
         elapsed = time.perf_counter() - started
-        if is_llm_timeout(exc):
+        if is_recoverable_llm_error(exc):
             logger.warning(
-                "LLM invoke timed out after %.1fs (limit=%ss): %.80s",
+                "LLM invoke failed after %.1fs: %s — %.80s",
                 elapsed,
-                s.llm_timeout_sec,
+                exc.__class__.__name__,
                 question,
             )
+            logger.debug("LLM invoke traceback", exc_info=True)
             response = ""
         else:
             logger.error(
@@ -129,6 +130,17 @@ def is_llm_timeout(exc: BaseException) -> bool:
         return True
     cause = exc.__cause__
     return cause is not None and is_llm_timeout(cause)
+
+
+def is_llm_response_error(exc: BaseException) -> bool:
+    if exc.__class__.__name__ == "ResponseError":
+        return True
+    cause = exc.__cause__
+    return cause is not None and is_llm_response_error(cause)
+
+
+def is_recoverable_llm_error(exc: BaseException) -> bool:
+    return is_llm_timeout(exc) or is_llm_response_error(exc)
 
 
 def _warn_if_context_may_exceed_num_ctx(context_text, question, num_ctx):
