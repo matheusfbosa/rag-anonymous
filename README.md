@@ -115,12 +115,13 @@ The CLI takes no flags — all knobs come from environment variables (typically 
 - **Offline:** Anonymizes the corpus before indexing (PII replaced by tags in stored chunks).
 - **On-Demand:** Indexes the corpus as-is (raw text); anonymization is applied to the LLM answer at query time.
 
-Reads `RAG_ANON_ANONYMIZER_STRATEGY` and `RAG_ANON_CORPUS_DATASET` from env:
+Reads `RAG_ANON_ANONYMIZER_STRATEGY` and `RAG_ANON_CORPUS_DATASET` from env (or via Makefile variables `STRATEGY` / `DATASET`):
 
 ```sh
-make ingest
-# or override inline:
-RAG_ANON_ANONYMIZER_STRATEGY=ondemand RAG_ANON_CORPUS_DATASET=train make ingest
+make ingest                              # offline + dev (defaults)
+make ingest STRATEGY=ondemand DATASET=train
+make ingest-dev-strategies              # offline_dev + ondemand_dev
+make ingest-all                          # all 6 indices (dev/train/test × offline/ondemand)
 ```
 
 Equivalent direct CLI:

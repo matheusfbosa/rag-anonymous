@@ -1,3 +1,14 @@
+DATASET  ?= dev
+STRATEGY ?= offline
+
+# Test
+
+.PHONY: test
+test:
+	pytest -q
+
+# Docker
+
 docker-up:
 	docker compose up -d
 
@@ -25,6 +36,8 @@ docker-clean:
 	docker compose pull
 	docker compose up -d
 
+# Ollama models
+
 docker-ollama-pull-models:
 	docker exec -it ollama ollama pull nomic-embed-text
 	docker exec -it ollama ollama pull qwen3:4b
@@ -37,11 +50,47 @@ ollama-pull-models:
 	ollama pull qwen3:8b
 	ollama pull gemma4:12b
 
+# Ingest
+
 ingest:
+	RAG_ANON_ANONYMIZER_STRATEGY=$(STRATEGY) \
+	RAG_ANON_CORPUS_DATASET=$(DATASET) \
 	rag-anon ingest
+
+ingest-offline:
+	$(MAKE) ingest STRATEGY=offline DATASET=$(DATASET)
+
+ingest-ondemand:
+	$(MAKE) ingest STRATEGY=ondemand DATASET=$(DATASET)
+
+ingest-dev:
+	$(MAKE) ingest DATASET=dev
+
+ingest-train:
+	$(MAKE) ingest DATASET=train
+
+ingest-test:
+	$(MAKE) ingest DATASET=test
+
+ingest-strategies:
+	$(MAKE) ingest-offline DATASET=$(DATASET)
+	$(MAKE) ingest-ondemand DATASET=$(DATASET)
+
+ingest-dev-strategies:
+	$(MAKE) ingest-strategies DATASET=dev
+
+ingest-train-strategies:
+	$(MAKE) ingest-strategies DATASET=train
+
+ingest-test-strategies:
+	$(MAKE) ingest-strategies DATASET=test
+
+ingest-all:
+	$(MAKE) ingest-dev-strategies
+	$(MAKE) ingest-train-strategies
+	$(MAKE) ingest-test-strategies
+
+# Query
 
 query:
 	rag-anon query
-
-test:
-	pytest -q

@@ -51,3 +51,20 @@ class TestBuildLlmLimits:
         kwargs = chat_cls.call_args.kwargs
         assert kwargs["num_predict"] == 2048
         assert kwargs["timeout"] == 600.0
+
+
+class TestLoadRetrieverDataset:
+    def test_explicit_dataset_selects_index(self, monkeypatch):
+        monkeypatch.setenv("RAG_ANON_CORPUS_DATASET", "test")
+
+        with (
+            patch("rag_anonymous.query.ElasticsearchStore") as store_cls,
+            patch("rag_anonymous.query.OllamaEmbeddings"),
+            patch("rag_anonymous.query._log_collection_health"),
+        ):
+            from rag_anonymous.query import load_retriever
+
+            load_retriever("offline", dataset="dev")
+
+        store_cls.assert_called_once()
+        assert store_cls.call_args.kwargs["index_name"] == "offline_dev"

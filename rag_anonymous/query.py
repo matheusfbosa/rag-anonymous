@@ -46,9 +46,9 @@ def create_chain(llm=None):
     return prompt | llm | StrOutputParser()
 
 
-def load_retriever(collection_name="offline"):
+def load_retriever(collection_name="offline", dataset: str | None = None):
     s = Settings.load()
-    index = s.es_index(collection_name)
+    index = s.es_index(collection_name, dataset)
     embeddings = OllamaEmbeddings(
         model=s.embedding_model,
         base_url=s.ollama_base_url,
