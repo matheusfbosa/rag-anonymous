@@ -2,6 +2,10 @@
 
 RAG pipeline with Offline/On-Demand anonymization.
 
+<p align="center">
+  <img src="rag-anon.png" alt="rag-anonymous" width="280">
+</p>
+
 ## Architecture
 
 The pipeline supports two anonymization strategies controlled by `RAG_ANON_ANONYMIZER_STRATEGY`.
