@@ -258,3 +258,72 @@ class TestQueryRagResponseError:
         assert result["response"] == ""
         assert result["retrieved_chunks"]
         assert any("LLM invoke failed" in r.message for r in caplog.records)
+
+
+class FlakyRetriever:
+    def __init__(self, docs: list[Document], errors: list[Exception]) -> None:
+        self._docs = docs
+        self._errors = list(errors)
+        self.calls = 0
+        self.invoked_with: str | None = None
+
+    def invoke(self, question: str) -> list[Document]:
+        self.calls += 1
+        self.invoked_with = question
+        if self._errors:
+            raise self._errors.pop(0)
+        return self._docs
+
+
+class FlakyStore:
+    def __init__(self, retriever: FlakyRetriever) -> None:
+        self.retriever = retriever
+        self.k: int | None = None
+
+    def as_retriever(self, search_kwargs: dict) -> FlakyRetriever:
+        self.k = search_kwargs["k"]
+        return self.retriever
+
+
+class TestRetrieverRetry:
+    def test_retries_recoverable_error_then_succeeds(
+        self, retrieved_docs, monkeypatch, caplog
+    ):
+        class ResponseError(Exception):
+            pass
+
+        monkeypatch.setattr("rag_anonymous.query.time.sleep", lambda _s: None)
+        retriever = FlakyRetriever(retrieved_docs, [ResponseError("CUDA busy")])
+        store = FlakyStore(retriever)
+
+        with caplog.at_level("WARNING"):
+            result = query_rag(FakeChain(), store, "q", k_docs=3)
+
+        assert retriever.calls == 2
+        assert result["retrieved_chunks"]
+        assert any("Retriever invoke failed" in r.message for r in caplog.records)
+
+    def test_gives_up_after_retries(self, retrieved_docs, monkeypatch):
+        class ResponseError(Exception):
+            pass
+
+        monkeypatch.setattr("rag_anonymous.query.time.sleep", lambda _s: None)
+        retriever = FlakyRetriever(
+            retrieved_docs,
+            [ResponseError("eof"), ResponseError("eof"), ResponseError("eof")],
+        )
+        store = FlakyStore(retriever)
+
+        with pytest.raises(ResponseError):
+            query_rag(FakeChain(), store, "q", k_docs=3)
+
+        assert retriever.calls == 3
+
+    def test_non_recoverable_error_is_not_retried(self, retrieved_docs):
+        retriever = FlakyRetriever(retrieved_docs, [ValueError("bad index")])
+        store = FlakyStore(retriever)
+
+        with pytest.raises(ValueError, match="bad index"):
+            query_rag(FakeChain(), store, "q", k_docs=3)
+
+        assert retriever.calls == 1

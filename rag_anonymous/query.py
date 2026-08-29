@@ -17,8 +17,10 @@ Question: {question}
 """
 
 _CHARS_PER_TOKEN = 4
-_PROMPT_OVERHEAD_TOKENS = 64
 _CTX_WARN_RATIO = 0.9
+_PROMPT_OVERHEAD_TOKENS = 64
+_RETRIEVER_ATTEMPTS = 3
+_RETRIEVER_RETRY_SLEEP_SEC = 1.0
 
 
 def build_llm(
@@ -69,7 +71,7 @@ def query_rag(chain, retrieval_store, question, k_docs=None):
     if k_docs is None:
         k_docs = s.retrieval_k_docs
     retriever = retrieval_store.as_retriever(search_kwargs={"k": k_docs})
-    chunks = retriever.invoke(question)
+    chunks = _invoke_retriever(retriever, question)
     context_text = "\n\n---\n\n".join(doc.page_content for doc in chunks)
 
     _warn_if_context_may_exceed_num_ctx(context_text, question, s.llm_num_ctx)
@@ -141,6 +143,27 @@ def is_llm_response_error(exc: BaseException) -> bool:
 
 def is_recoverable_llm_error(exc: BaseException) -> bool:
     return is_llm_timeout(exc) or is_llm_response_error(exc)
+
+
+def _invoke_retriever(retriever, question: str):
+    last_exc: BaseException | None = None
+    for attempt in range(1, _RETRIEVER_ATTEMPTS + 1):
+        try:
+            return retriever.invoke(question)
+        except Exception as exc:
+            last_exc = exc
+            if not is_recoverable_llm_error(exc) or attempt == _RETRIEVER_ATTEMPTS:
+                raise
+            logger.warning(
+                "Retriever invoke failed (attempt %d/%d): %s — %.80s",
+                attempt,
+                _RETRIEVER_ATTEMPTS,
+                exc.__class__.__name__,
+                question,
+            )
+            time.sleep(_RETRIEVER_RETRY_SLEEP_SEC)
+    assert last_exc is not None
+    raise last_exc
 
 
 def _warn_if_context_may_exceed_num_ctx(context_text, question, num_ctx):
