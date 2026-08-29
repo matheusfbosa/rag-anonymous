@@ -91,6 +91,37 @@ class TestQueryRag:
         result = query_rag(FakeChain(), FakeRetrievalStore(retrieved_docs), "q", k_docs=3)
         assert result["docs_unique"] == 2
 
+    def test_returns_retrieval_and_generation_timings(self, retrieved_docs, monkeypatch):
+        ticks = iter([10.0, 10.4, 20.0, 21.5])
+        monkeypatch.setattr(
+            "rag_anonymous.query.time.perf_counter", lambda: next(ticks)
+        )
+
+        result = query_rag(
+            FakeChain(), FakeRetrievalStore(retrieved_docs), "q", k_docs=3
+        )
+
+        assert result["retrieval_sec"] == pytest.approx(0.4)
+        assert result["generation_sec"] == pytest.approx(1.5)
+
+    def test_generation_timing_includes_recoverable_failure(
+        self, retrieved_docs, monkeypatch
+    ):
+        class SlowChain:
+            def invoke(self, payload: dict) -> str:
+                raise TimeoutError("deadline exceeded")
+
+        ticks = iter([1.0, 1.1, 2.0, 5.0])
+        monkeypatch.setattr(
+            "rag_anonymous.query.time.perf_counter", lambda: next(ticks)
+        )
+
+        result = query_rag(SlowChain(), FakeRetrievalStore(retrieved_docs), "q", k_docs=3)
+
+        assert result["response"] == ""
+        assert result["retrieval_sec"] == pytest.approx(0.1)
+        assert result["generation_sec"] == pytest.approx(3.0)
+
     def test_context_joined_with_separator(self, retrieved_docs):
         chain = FakeChain()
         query_rag(chain, FakeRetrievalStore(retrieved_docs), "q", k_docs=3)

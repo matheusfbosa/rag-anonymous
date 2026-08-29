@@ -71,20 +71,22 @@ def query_rag(chain, retrieval_store, question, k_docs=None):
     if k_docs is None:
         k_docs = s.retrieval_k_docs
     retriever = retrieval_store.as_retriever(search_kwargs={"k": k_docs})
+    retrieval_started = time.perf_counter()
     chunks = _invoke_retriever(retriever, question)
+    retrieval_sec = time.perf_counter() - retrieval_started
     context_text = "\n\n---\n\n".join(doc.page_content for doc in chunks)
 
     _warn_if_context_may_exceed_num_ctx(context_text, question, s.llm_num_ctx)
 
-    started = time.perf_counter()
+    generation_started = time.perf_counter()
     try:
         response = chain.invoke({"context": context_text, "question": question})
     except Exception as exc:
-        elapsed = time.perf_counter() - started
+        generation_sec = time.perf_counter() - generation_started
         if is_recoverable_llm_error(exc):
             logger.warning(
                 "LLM invoke failed after %.1fs: %s — %.80s",
-                elapsed,
+                generation_sec,
                 exc.__class__.__name__,
                 question,
             )
@@ -93,17 +95,17 @@ def query_rag(chain, retrieval_store, question, k_docs=None):
         else:
             logger.error(
                 "LLM invoke failed after %.1fs: %s — %.80s",
-                elapsed,
+                generation_sec,
                 exc.__class__.__name__,
                 question,
             )
             raise
     else:
-        elapsed = time.perf_counter() - started
-        if elapsed > 60:
-            logger.warning("LLM invoke slow: %.1fs — %.80s", elapsed, question)
+        generation_sec = time.perf_counter() - generation_started
+        if generation_sec > 60:
+            logger.warning("LLM invoke slow: %.1fs — %.80s", generation_sec, question)
         else:
-            logger.debug("LLM invoke completed in %.1fs", elapsed)
+            logger.debug("LLM invoke completed in %.1fs", generation_sec)
 
     return {
         "question": question,
@@ -117,6 +119,8 @@ def query_rag(chain, retrieval_store, question, k_docs=None):
             for doc in chunks
         ],
         "docs_unique": len(set(c.metadata["doc_id"] for c in chunks)),
+        "retrieval_sec": retrieval_sec,
+        "generation_sec": generation_sec,
     }
 
 

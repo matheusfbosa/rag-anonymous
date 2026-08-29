@@ -1,5 +1,6 @@
 import logging
 import sys
+import time
 
 from rag_anonymous.anonymizer import Anonymizer
 from rag_anonymous.config import Settings
@@ -44,9 +45,19 @@ def cmd_query():
     chain = create_chain()
     result = query_rag(chain, retrieval_store, question, k_docs=k_docs)
 
+    anonymize_sec = 0.0
     if strategy == "ondemand":
+        started = time.perf_counter()
         result["response"] = Anonymizer().anonymize(_response_text(result["response"]))
+        anonymize_sec = time.perf_counter() - started
 
+    logger.info(
+        "Queried: retrieval=%.2fs generation=%.2fs anonymize=%.3fs query=%.2fs",
+        result["retrieval_sec"],
+        result["generation_sec"],
+        anonymize_sec,
+        result["retrieval_sec"] + result["generation_sec"] + anonymize_sec,
+    )
     logger.info("Queried: answer=%s", result["response"])
     logger.info(
         "Queried: retrieved_chunks=%d docs_unique=%d",
