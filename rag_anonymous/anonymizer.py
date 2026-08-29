@@ -21,7 +21,7 @@ class Anonymizer:
         )
         anonymized = self._anonymizer.anonymize(
             text=text,
-            analyzer_results=results,
+            analyzer_results=results,  # type: ignore[arg-type]
             operators={"DEFAULT": OperatorConfig("replace")},
         )
         return anonymized.text

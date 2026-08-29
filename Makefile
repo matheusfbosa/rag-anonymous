@@ -11,6 +11,7 @@ format:
 lint:
 	ruff check .
 	ruff format --check .
+	mypy
 
 hooks:
 	pre-commit install

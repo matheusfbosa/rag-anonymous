@@ -1,5 +1,6 @@
 import logging
 import time
+from typing import Any
 
 from langchain_core.documents import Document
 from langchain_core.output_parsers import StrOutputParser
@@ -8,6 +9,7 @@ from langchain_elasticsearch import DenseVectorStrategy, ElasticsearchStore
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 
 from rag_anonymous.config import Settings
+from rag_anonymous.types import QueryResult
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +33,7 @@ def build_llm(
     timeout: float | None = None,
 ) -> ChatOllama:
     s = Settings.load()
-    return ChatOllama(
+    return ChatOllama(  # type: ignore[call-arg]
         model=model_name or s.llm_model,
         base_url=s.ollama_base_url,
         temperature=s.llm_temperature,
@@ -42,7 +44,7 @@ def build_llm(
     )
 
 
-def create_chain(llm: ChatOllama | None = None) -> object:
+def create_chain(llm: ChatOllama | None = None) -> Any:
     if llm is None:
         llm = build_llm()
     prompt = ChatPromptTemplate.from_template(RAG_PROMPT_TEMPLATE)
@@ -70,11 +72,11 @@ def load_retriever(
 
 
 def query_rag(
-    chain: object,
-    retrieval_store: object,
+    chain: Any,
+    retrieval_store: Any,
     question: str,
     k_docs: int | None = None,
-) -> dict[str, object]:
+) -> QueryResult:
     s = Settings.load()
     if k_docs is None:
         k_docs = s.retrieval_k_docs
@@ -157,7 +159,7 @@ def is_recoverable_llm_error(exc: BaseException) -> bool:
     return is_llm_timeout(exc) or is_llm_response_error(exc)
 
 
-def _invoke_retriever(retriever: object, question: str) -> list[Document]:
+def _invoke_retriever(retriever: Any, question: str) -> list[Document]:
     last_exc: BaseException | None = None
     for attempt in range(1, _RETRIEVER_ATTEMPTS + 1):
         try:
@@ -194,7 +196,7 @@ def _warn_if_context_may_exceed_num_ctx(
         )
 
 
-def _log_collection_health(store: object, index: str) -> None:
+def _log_collection_health(store: ElasticsearchStore, index: str) -> None:
     try:
         exists = store.client.indices.exists(index=index)
     except Exception as exc:

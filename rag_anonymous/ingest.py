@@ -2,6 +2,7 @@ import json
 import logging
 import urllib.request
 from pathlib import Path
+from typing import Any, cast
 
 from langchain_core.documents import Document
 from langchain_elasticsearch import ElasticsearchStore
@@ -59,7 +60,8 @@ def load_corpus(dataset: str) -> list[dict]:
 
     logger.info("Loading corpus: path=%s", path)
     with open(path, encoding="utf-8") as f:
-        return json.load(f)
+        loaded: Any = json.load(f)
+    return cast(list[dict], loaded)
 
 
 def _build_documents(

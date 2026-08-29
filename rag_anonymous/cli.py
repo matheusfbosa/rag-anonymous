@@ -89,8 +89,9 @@ def main() -> None:
 
 
 def _response_text(raw: object) -> str:
-    if hasattr(raw, "content"):
-        return raw.content
+    content = getattr(raw, "content", None)
+    if isinstance(content, str):
+        return content
     return raw if isinstance(raw, str) else str(raw)
 
 

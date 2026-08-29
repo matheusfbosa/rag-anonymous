@@ -25,6 +25,7 @@ test = [
 ]
 dev = [
     "rag-anonymous[test]",
+    "mypy>=1.14",
     "pre-commit>=4.0",
     "ruff>=0.12",
 ]
@@ -34,6 +35,9 @@ rag-anon = "rag_anonymous.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["rag_anonymous*"]
+
+[tool.setuptools.package-data]
+rag_anonymous = ["py.typed"]
 
 [tool.ruff]
 target-version = "py312"
@@ -54,6 +58,7 @@ select = [
 ]
 ignore = [
     "E501",
+    "ANN401",
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -61,3 +66,21 @@ ignore = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["rag_anonymous"]
+
+[tool.mypy]
+python_version = "3.12"
+packages = ["rag_anonymous"]
+warn_unused_ignores = true
+warn_redundant_casts = true
+explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = [
+    "elasticsearch.*",
+    "langchain_elasticsearch.*",
+    "langchain_ollama.*",
+    "langchain_text_splitters.*",
+    "presidio_analyzer.*",
+    "presidio_anonymizer.*",
+]
+ignore_missing_imports = true

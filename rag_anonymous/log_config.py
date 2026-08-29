@@ -94,7 +94,8 @@ def _resolve_level(raw: str | None, default: str) -> int:
     level = logging.getLevelName(value.upper())
     if isinstance(level, int):
         return level
-    return logging.getLevelName(default)
+    fallback = logging.getLevelName(default.upper())
+    return fallback if isinstance(fallback, int) else logging.INFO
 
 
 def _startup_env_logging_enabled() -> bool:
