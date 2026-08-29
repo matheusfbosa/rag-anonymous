@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 USAGE = "Usage: rag-anon {ingest|query}  (configure via env / .env)"
 
 
-def cmd_ingest():
+def cmd_ingest() -> None:
     s = Settings.load()
     strategy = s.anonymizer_strategy
     dataset = s.dataset
@@ -26,7 +26,7 @@ def cmd_ingest():
         ingest_offline(corpus, Anonymizer(), collection_name=strategy, dataset=dataset)
 
 
-def cmd_query():
+def cmd_query() -> None:
     s = Settings.load()
     strategy = s.anonymizer_strategy
     question = s.query_question
@@ -79,7 +79,7 @@ COMMANDS = {
 }
 
 
-def main():
+def main() -> None:
     configure_logging()
 
     if len(sys.argv) != 2 or sys.argv[1] not in COMMANDS:
@@ -88,7 +88,7 @@ def main():
     COMMANDS[sys.argv[1]]()
 
 
-def _response_text(raw):
+def _response_text(raw: object) -> str:
     if hasattr(raw, "content"):
         return raw.content
     return raw if isinstance(raw, str) else str(raw)

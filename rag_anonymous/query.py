@@ -1,6 +1,7 @@
 import logging
 import time
 
+from langchain_core.documents import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_elasticsearch import DenseVectorStrategy, ElasticsearchStore
@@ -41,14 +42,16 @@ def build_llm(
     )
 
 
-def create_chain(llm=None):
+def create_chain(llm: ChatOllama | None = None) -> object:
     if llm is None:
         llm = build_llm()
     prompt = ChatPromptTemplate.from_template(RAG_PROMPT_TEMPLATE)
     return prompt | llm | StrOutputParser()
 
 
-def load_retriever(collection_name="offline", dataset: str | None = None):
+def load_retriever(
+    collection_name: str = "offline", dataset: str | None = None
+) -> ElasticsearchStore:
     s = Settings.load()
     index = s.es_index(collection_name, dataset)
     embeddings = OllamaEmbeddings(
@@ -66,7 +69,12 @@ def load_retriever(collection_name="offline", dataset: str | None = None):
     return store
 
 
-def query_rag(chain, retrieval_store, question, k_docs=None):
+def query_rag(
+    chain: object,
+    retrieval_store: object,
+    question: str,
+    k_docs: int | None = None,
+) -> dict[str, object]:
     s = Settings.load()
     if k_docs is None:
         k_docs = s.retrieval_k_docs
@@ -149,7 +157,7 @@ def is_recoverable_llm_error(exc: BaseException) -> bool:
     return is_llm_timeout(exc) or is_llm_response_error(exc)
 
 
-def _invoke_retriever(retriever, question: str):
+def _invoke_retriever(retriever: object, question: str) -> list[Document]:
     last_exc: BaseException | None = None
     for attempt in range(1, _RETRIEVER_ATTEMPTS + 1):
         try:
@@ -170,7 +178,9 @@ def _invoke_retriever(retriever, question: str):
     raise last_exc
 
 
-def _warn_if_context_may_exceed_num_ctx(context_text, question, num_ctx):
+def _warn_if_context_may_exceed_num_ctx(
+    context_text: str, question: str, num_ctx: int
+) -> None:
     approx_tokens = (
         len(context_text) + len(question)
     ) // _CHARS_PER_TOKEN + _PROMPT_OVERHEAD_TOKENS
@@ -184,7 +194,7 @@ def _warn_if_context_may_exceed_num_ctx(context_text, question, num_ctx):
         )
 
 
-def _log_collection_health(store, index):
+def _log_collection_health(store: object, index: str) -> None:
     try:
         exists = store.client.indices.exists(index=index)
     except Exception as exc:

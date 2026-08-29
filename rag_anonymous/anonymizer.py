@@ -9,12 +9,12 @@ DEFAULT_ENTITIES = DEFAULT_ANONYMIZER_ENTITIES
 
 
 class Anonymizer:
-    def __init__(self, entities=None):
+    def __init__(self, entities: list[str] | None = None) -> None:
         self._entities = entities if entities is not None else _entities_from_env()
         self._analyzer = _create_analyzer_engine()
         self._anonymizer = AnonymizerEngine()
 
-    def anonymize(self, text):
+    def anonymize(self, text: object) -> str:
         text = _ensure_str(text)
         results = self._analyzer.analyze(
             text=text, language="en", entities=self._entities
@@ -27,7 +27,7 @@ class Anonymizer:
         return anonymized.text
 
 
-def _create_analyzer_engine():
+def _create_analyzer_engine() -> AnalyzerEngine:
     provider = NlpEngineProvider(
         nlp_configuration={
             "nlp_engine_name": "spacy",
@@ -67,7 +67,7 @@ def _create_analyzer_engine():
     return engine
 
 
-def _ensure_str(text):
+def _ensure_str(text: object) -> str:
     if text is None:
         return ""
     if isinstance(text, str):

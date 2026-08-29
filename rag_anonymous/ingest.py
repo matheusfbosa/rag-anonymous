@@ -8,6 +8,7 @@ from langchain_elasticsearch import ElasticsearchStore
 from langchain_ollama import OllamaEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+from rag_anonymous.anonymizer import Anonymizer
 from rag_anonymous.config import (
     DEFAULT_CORPUS_CACHE_SUBDIR,
     PROJECT_ROOT,
@@ -21,11 +22,20 @@ PROGRESS_EVERY = 10
 _DATA_CACHE_DIR = PROJECT_ROOT / DEFAULT_CORPUS_CACHE_SUBDIR
 
 
-def ingest_offline(corpus, anonymizer, collection_name="offline", dataset=None):
+def ingest_offline(
+    corpus: list[dict],
+    anonymizer: Anonymizer,
+    collection_name: str = "offline",
+    dataset: str | None = None,
+) -> ElasticsearchStore:
     return _ingest(corpus, collection_name, anonymizer=anonymizer, dataset=dataset)
 
 
-def ingest_ondemand(corpus, collection_name="ondemand", dataset=None):
+def ingest_ondemand(
+    corpus: list[dict],
+    collection_name: str = "ondemand",
+    dataset: str | None = None,
+) -> ElasticsearchStore:
     return _ingest(corpus, collection_name, anonymizer=None, dataset=dataset)
 
 
@@ -52,7 +62,11 @@ def load_corpus(dataset: str) -> list[dict]:
         return json.load(f)
 
 
-def _build_documents(corpus, anonymizer=None, dataset=None):
+def _build_documents(
+    corpus: list[dict],
+    anonymizer: Anonymizer | None = None,
+    dataset: str | None = None,
+) -> tuple[list[Document], list[str]]:
     strategy = "offline" if anonymizer is not None else "ondemand"
     s = Settings.load()
     splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
@@ -126,7 +140,12 @@ def _embeddings() -> OllamaEmbeddings:
     )
 
 
-def _ingest(corpus, collection_name, anonymizer, dataset=None):
+def _ingest(
+    corpus: list[dict],
+    collection_name: str,
+    anonymizer: Anonymizer | None,
+    dataset: str | None = None,
+) -> ElasticsearchStore:
     s = Settings.load()
     index = s.es_index(collection_name, dataset)
     label = "anonymized" if anonymizer is not None else "raw"
