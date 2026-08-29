@@ -2,10 +2,15 @@ import pytest
 from langchain_core.documents import Document
 
 from rag_anonymous.query import (
+    PRIVACY_HUMAN_TEMPLATE,
+    PRIVACY_SYSTEM_PROMPT,
+    RAG_PROMPT_TEMPLATE,
     _warn_if_context_may_exceed_num_ctx,
+    build_prompt_template,
     is_llm_response_error,
     is_llm_timeout,
     is_recoverable_llm_error,
+    prompt_overhead_tokens,
     query_rag,
     reasoning_flag,
 )
@@ -366,3 +371,42 @@ class TestRetrieverRetry:
             query_rag(FakeChain(), store, "q", k_docs=3)
 
         assert retriever.calls == 1
+
+
+class TestPrivacyPromptTemplate:
+    def test_enabled_uses_system_priority_instruction(self):
+        prompt = build_prompt_template(privacy_prompt=True)
+        messages = prompt.format_messages(context="CTX", question="Q?")
+        assert messages[0].type == "system"
+        assert "highest-priority goal is privacy" in messages[0].content
+        assert "<PERSON>" in messages[0].content
+        assert messages[1].type == "human"
+        assert messages[1].content == RAG_PROMPT_TEMPLATE.format(
+            context="CTX", question="Q?"
+        )
+
+    def test_disabled_keeps_legacy_template(self):
+        prompt = build_prompt_template(privacy_prompt=False)
+        messages = prompt.format_messages(context="CTX", question="Q?")
+        assert len(messages) == 1
+        assert messages[0].type == "human"
+        assert messages[0].content == RAG_PROMPT_TEMPLATE.format(
+            context="CTX", question="Q?"
+        )
+        assert "<context>" not in messages[0].content
+
+    def test_create_chain_reads_settings(self, monkeypatch):
+        monkeypatch.setenv("RAG_ANON_PRIVACY_PROMPT", "false")
+        prompt = build_prompt_template()
+        messages = prompt.format_messages(context="c", question="q")
+        assert len(messages) == 1
+        assert "Question: q" in messages[0].content
+
+    def test_overhead_grows_when_privacy_prompt_is_on(self):
+        baseline = prompt_overhead_tokens(privacy_prompt=False)
+        hardened = prompt_overhead_tokens(privacy_prompt=True)
+        assert baseline == 64
+        assert hardened > baseline
+        wrapper = PRIVACY_SYSTEM_PROMPT + PRIVACY_HUMAN_TEMPLATE
+        expected = (len(wrapper) - len("{context}") - len("{question}")) // 4
+        assert hardened == expected

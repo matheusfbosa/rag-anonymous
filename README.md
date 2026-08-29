@@ -28,8 +28,8 @@ flowchart TB
 
     subgraph query_phase ["Query  (rag-anon query)"]
         direction TB
-        question["User Question"] --> retriever["Elasticsearch Retriever\n(top-k chunks)"]
-        retriever --> prompt_builder["Prompt Builder\n(context + question)"]
+        question["User Question"] -->         retriever["Elasticsearch Retriever\n(top-k chunks)"]
+        retriever --> prompt_builder["Prompt Builder\n(privacy system prompt + context + question)"]
         prompt_builder --> llm["ChatOllama LLM\n(RAG_ANON_LLM_MODEL)"]
         llm --> strat_out{"Strategy?"}
         strat_out -->|offline| answer["Answer"]
@@ -174,5 +174,6 @@ RAG_ANON_QUERY_QUESTION="..." rag-anon query
 | `RAG_ANON_LOG_LEVEL_HTTP`       | `WARNING`                   | Level for the HTTP client loggers (`httpx`, `httpcore`, `urllib3`). Set to `INFO` to see every Ollama HTTP call.                                                                                                                 |
 | `RAG_ANON_LOG_LEVEL_PRESIDIO`   | `ERROR`                     | Level for `presidio-analyzer` / `presidio-anonymizer` loggers. The default suppresses the noisy startup banner; raise to `INFO` to debug recognizer issues.                                                                      |
 | `RAG_ANON_OLLAMA_BASE_URL`      | `http://localhost:11434`    | Ollama API endpoint                                                                                                                                                                                                              |
+| `RAG_ANON_PRIVACY_PROMPT`       | `true`                      | When `true`, the generator uses Zhang et al. (2024) goal-prioritization as a system prompt, adapted to `PERSON` (privacy over helpfulness; refuse or use `<PERSON>`). Set `false` to restore the legacy “answer from context only” template (ablation; results are not comparable). |
 | `RAG_ANON_QUERY_QUESTION`       | `""`                        | Question used by `rag-anon query`                                                                                                                                                                                                |
 | `RAG_ANON_RETRIEVAL_K_DOCS`     | `3`                         | Retrieved chunks per query                                                                                                                                                                                                       |

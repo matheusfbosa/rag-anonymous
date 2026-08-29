@@ -1,5 +1,7 @@
 from unittest.mock import patch
 
+import pytest
+
 from rag_anonymous.config import Settings
 
 
@@ -21,6 +23,22 @@ class TestLlmLimitsSettings:
 
         assert s.llm_num_predict == 256
         assert s.llm_timeout_sec == 90.0
+
+
+class TestPrivacyPromptSettings:
+    def test_default_is_enabled(self, monkeypatch):
+        monkeypatch.delenv("RAG_ANON_PRIVACY_PROMPT", raising=False)
+        assert Settings.load().privacy_prompt is True
+
+    @pytest.mark.parametrize("value", ["0", "false", "False", "no", "off"])
+    def test_falsy_disables(self, monkeypatch, value):
+        monkeypatch.setenv("RAG_ANON_PRIVACY_PROMPT", value)
+        assert Settings.load().privacy_prompt is False
+
+    @pytest.mark.parametrize("value", ["1", "true", "True", "yes"])
+    def test_truthy_enables(self, monkeypatch, value):
+        monkeypatch.setenv("RAG_ANON_PRIVACY_PROMPT", value)
+        assert Settings.load().privacy_prompt is True
 
 
 class TestBuildLlmLimits:
