@@ -55,20 +55,14 @@ class Settings:
             DEFAULT_ANONYMIZER_ENTITIES,
         )
         return cls(
-            anonymizer_strategy=os.getenv(
-                "RAG_ANON_ANONYMIZER_STRATEGY", "offline"
-            ),
+            anonymizer_strategy=os.getenv("RAG_ANON_ANONYMIZER_STRATEGY", "offline"),
             dataset=os.getenv("RAG_ANON_CORPUS_DATASET", "dev"),
             corpus=os.getenv("RAG_ANON_CORPUS", ""),
             query_question=os.getenv("RAG_ANON_QUERY_QUESTION", ""),
             chunk_size=int(os.getenv("RAG_ANON_CHUNK_SIZE", "7000")),
             chunk_overlap=int(os.getenv("RAG_ANON_CHUNK_OVERLAP", "0")),
-            embedding_model=os.getenv(
-                "RAG_ANON_EMBEDDING_MODEL", "nomic-embed-text"
-            ),
-            embedding_num_ctx=int(
-                os.getenv("RAG_ANON_EMBEDDING_NUM_CTX", "8192")
-            ),
+            embedding_model=os.getenv("RAG_ANON_EMBEDDING_MODEL", "nomic-embed-text"),
+            embedding_num_ctx=int(os.getenv("RAG_ANON_EMBEDDING_NUM_CTX", "8192")),
             ollama_base_url=os.getenv(
                 "RAG_ANON_OLLAMA_BASE_URL", "http://localhost:11434"
             ),
@@ -76,9 +70,7 @@ class Settings:
             retrieval_k_docs=int(os.getenv("RAG_ANON_RETRIEVAL_K_DOCS", "5")),
             llm_model=os.getenv("RAG_ANON_LLM_MODEL", "qwen3:0.6b"),
             llm_temperature=float(os.getenv("RAG_ANON_LLM_TEMPERATURE", "0.0")),
-            llm_reasoning=os.getenv("RAG_ANON_LLM_REASONING", "false")
-            .strip()
-            .lower()
+            llm_reasoning=os.getenv("RAG_ANON_LLM_REASONING", "false").strip().lower()
             in ("1", "true", "yes"),
             llm_num_ctx=int(os.getenv("RAG_ANON_LLM_NUM_CTX", "8192")),
             llm_num_predict=int(os.getenv("RAG_ANON_LLM_NUM_PREDICT", "512")),

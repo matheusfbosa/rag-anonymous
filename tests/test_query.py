@@ -72,7 +72,9 @@ class TestQueryRag:
         assert result["response"] == "generated answer"
 
     def test_retrieved_chunks_carry_doc_and_chunk_ids(self, retrieved_docs):
-        result = query_rag(FakeChain(), FakeRetrievalStore(retrieved_docs), "q", k_docs=3)
+        result = query_rag(
+            FakeChain(), FakeRetrievalStore(retrieved_docs), "q", k_docs=3
+        )
 
         assert len(result["retrieved_chunks"]) == 3
         assert [c["doc_id"] for c in result["retrieved_chunks"]] == ["a", "a", "b"]
@@ -88,10 +90,14 @@ class TestQueryRag:
         ]
 
     def test_docs_unique_deduplicates(self, retrieved_docs):
-        result = query_rag(FakeChain(), FakeRetrievalStore(retrieved_docs), "q", k_docs=3)
+        result = query_rag(
+            FakeChain(), FakeRetrievalStore(retrieved_docs), "q", k_docs=3
+        )
         assert result["docs_unique"] == 2
 
-    def test_returns_retrieval_and_generation_timings(self, retrieved_docs, monkeypatch):
+    def test_returns_retrieval_and_generation_timings(
+        self, retrieved_docs, monkeypatch
+    ):
         ticks = iter([10.0, 10.4, 20.0, 21.5])
         monkeypatch.setattr(
             "rag_anonymous.query.time.perf_counter", lambda: next(ticks)
@@ -116,7 +122,9 @@ class TestQueryRag:
             "rag_anonymous.query.time.perf_counter", lambda: next(ticks)
         )
 
-        result = query_rag(SlowChain(), FakeRetrievalStore(retrieved_docs), "q", k_docs=3)
+        result = query_rag(
+            SlowChain(), FakeRetrievalStore(retrieved_docs), "q", k_docs=3
+        )
 
         assert result["response"] == ""
         assert result["retrieval_sec"] == pytest.approx(0.1)
@@ -174,9 +182,7 @@ class TestContextFitGuard:
     def test_oversized_context_warns(self, caplog):
         with caplog.at_level("WARNING"):
             _warn_if_context_may_exceed_num_ctx("x" * 40000, "q", 8192)
-        assert any(
-            "Context may exceed num_ctx" in r.message for r in caplog.records
-        )
+        assert any("Context may exceed num_ctx" in r.message for r in caplog.records)
 
     def test_warning_reports_estimated_and_limit_tokens(self, caplog):
         with caplog.at_level("WARNING"):
@@ -265,7 +271,9 @@ class TestQueryRagTimeout:
                 raise TimeoutError("deadline exceeded")
 
         with caplog.at_level("WARNING"):
-            result = query_rag(SlowChain(), FakeRetrievalStore(retrieved_docs), "q", k_docs=3)
+            result = query_rag(
+                SlowChain(), FakeRetrievalStore(retrieved_docs), "q", k_docs=3
+            )
 
         assert result["response"] == ""
         assert result["retrieved_chunks"]

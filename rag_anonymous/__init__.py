@@ -1,6 +1,5 @@
-import rag_anonymous.config
-
 from rag_anonymous.anonymizer import Anonymizer
+from rag_anonymous.config import Settings
 from rag_anonymous.ingest import ingest_offline, ingest_ondemand, load_corpus
 from rag_anonymous.log_config import configure_logging
 from rag_anonymous.query import (
@@ -13,6 +12,7 @@ from rag_anonymous.query import (
 
 __all__ = [
     "Anonymizer",
+    "Settings",
     "build_llm",
     "configure_logging",
     "create_chain",

@@ -17,7 +17,7 @@ class TestBuildDocumentsCommon:
         documents, ids = _build_documents(sample_corpus, anonymizer=fake_anonymizer)
 
         assert len(documents) == len(ids)
-        for doc, chunk_id in zip(documents, ids):
+        for doc, chunk_id in zip(documents, ids, strict=True):
             assert isinstance(doc, Document)
             assert doc.metadata["chunk_id"] == chunk_id
 
@@ -27,7 +27,7 @@ class TestBuildDocumentsCommon:
         documents, ids = _build_documents(sample_corpus, anonymizer=fake_anonymizer)
 
         per_doc_indices: dict[str, list[int]] = {}
-        for chunk_id, doc in zip(ids, documents):
+        for chunk_id, doc in zip(ids, documents, strict=True):
             doc_id = doc.metadata["doc_id"]
             assert chunk_id == f"{doc_id}_chunk_{doc.metadata['chunk_index']}"
             per_doc_indices.setdefault(doc_id, []).append(doc.metadata["chunk_index"])
@@ -54,7 +54,9 @@ class TestBuildDocumentsCommon:
         raw_lengths = {item["doc_id"]: len(item["text"]) for item in sample_corpus}
 
         for doc in documents:
-            assert doc.metadata["original_length"] == raw_lengths[doc.metadata["doc_id"]]
+            assert (
+                doc.metadata["original_length"] == raw_lengths[doc.metadata["doc_id"]]
+            )
 
     def test_doc1_actually_chunked(self, sample_corpus, fake_anonymizer):
         documents, _ = _build_documents(sample_corpus, anonymizer=fake_anonymizer)

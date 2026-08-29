@@ -172,9 +172,8 @@ def _invoke_retriever(retriever, question: str):
 
 def _warn_if_context_may_exceed_num_ctx(context_text, question, num_ctx):
     approx_tokens = (
-        (len(context_text) + len(question)) // _CHARS_PER_TOKEN
-        + _PROMPT_OVERHEAD_TOKENS
-    )
+        len(context_text) + len(question)
+    ) // _CHARS_PER_TOKEN + _PROMPT_OVERHEAD_TOKENS
     if approx_tokens > _CTX_WARN_RATIO * num_ctx:
         logger.warning(
             "Context may exceed num_ctx: approx_tokens=%d num_ctx=%d "
@@ -197,9 +196,7 @@ def _log_collection_health(store, index):
         return
 
     if not exists:
-        logger.warning(
-            "Index missing: index=%s (run `rag-anon ingest` first)", index
-        )
+        logger.warning("Index missing: index=%s (run `rag-anon ingest` first)", index)
         return
 
     count = store.client.count(index=index)["count"]

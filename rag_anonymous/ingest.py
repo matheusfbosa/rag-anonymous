@@ -45,12 +45,10 @@ def load_corpus(dataset: str) -> list[dict]:
     else:
         path = Path(corpus)
         if not path.exists():
-            raise FileNotFoundError(
-                f"RAG_ANON_CORPUS points to a missing file: {path}"
-            )
+            raise FileNotFoundError(f"RAG_ANON_CORPUS points to a missing file: {path}")
 
     logger.info("Loading corpus: path=%s", path)
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 

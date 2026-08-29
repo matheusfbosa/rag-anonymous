@@ -65,7 +65,8 @@ def _log_startup_env_configuration() -> None:
     keys = sorted(k for k in os.environ if k.startswith(_ENV_PREFIXES))
     if not keys:
         log.info(
-            "No env variables starting with prefixes=%s", _ENV_PREFIXES,
+            "No env variables starting with prefixes=%s",
+            _ENV_PREFIXES,
         )
         return
 

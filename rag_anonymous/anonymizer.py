@@ -28,41 +28,38 @@ class Anonymizer:
 
 
 def _create_analyzer_engine():
-    provider = NlpEngineProvider(nlp_configuration={
-        "nlp_engine_name": "spacy",
-        "models": [
-            {
-                "lang_code": "en",
-                "model_name": "en_core_web_lg"
-            }
-        ],
-        "ner_model_configuration": {
-            "model_to_presidio_entity_mapping": {
-                "PER": "PERSON",
-                "PERSON": "PERSON",
-                "LOC": "LOCATION",
-                "LOCATION": "LOCATION",
-                "GPE": "LOCATION",
-                "FAC": "LOCATION",
-                "DATE": "DATE_TIME",
-                "TIME": "DATE_TIME",
+    provider = NlpEngineProvider(
+        nlp_configuration={
+            "nlp_engine_name": "spacy",
+            "models": [{"lang_code": "en", "model_name": "en_core_web_lg"}],
+            "ner_model_configuration": {
+                "model_to_presidio_entity_mapping": {
+                    "PER": "PERSON",
+                    "PERSON": "PERSON",
+                    "LOC": "LOCATION",
+                    "LOCATION": "LOCATION",
+                    "GPE": "LOCATION",
+                    "FAC": "LOCATION",
+                    "DATE": "DATE_TIME",
+                    "TIME": "DATE_TIME",
+                },
+                "labels_to_ignore": [
+                    "CARDINAL",
+                    "LAW",
+                    "WORK_OF_ART",
+                    "ORDINAL",
+                    "PERCENT",
+                    "PRODUCT",
+                    "LANGUAGE",
+                    "QUANTITY",
+                    "EVENT",
+                    "ORG",
+                    "NORP",
+                    "MONEY",
+                ],
             },
-            "labels_to_ignore": [
-                "CARDINAL",
-                "LAW",
-                "WORK_OF_ART",
-                "ORDINAL",
-                "PERCENT",
-                "PRODUCT",
-                "LANGUAGE",
-                "QUANTITY",
-                "EVENT",
-                "ORG",
-                "NORP",
-                "MONEY",
-            ],
-        },
-    })
+        }
+    )
     nlp_engine = provider.create_engine()
     registry = RecognizerRegistry(supported_languages=["en"])
     registry.load_predefined_recognizers(nlp_engine=nlp_engine)

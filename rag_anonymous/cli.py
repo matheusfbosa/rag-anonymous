@@ -35,7 +35,7 @@ def cmd_query():
     if not question:
         raise SystemExit(
             "RAG_ANON_QUERY_QUESTION env var is required for `rag-anon query` "
-            "(set it in .env or inline: RAG_ANON_QUERY_QUESTION=\"...\" rag-anon query)."
+            '(set it in .env or inline: RAG_ANON_QUERY_QUESTION="..." rag-anon query).'
         )
 
     logger.info("Querying: strategy=%s k_docs=%d", strategy, k_docs)

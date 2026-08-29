@@ -1,9 +1,22 @@
 DATASET  ?= dev
 STRATEGY ?= offline
 
+# Lint / format
+
+.PHONY: format lint test hooks
+format:
+	ruff format .
+	ruff check --fix .
+
+lint:
+	ruff check .
+	ruff format --check .
+
+hooks:
+	pre-commit install
+
 # Test
 
-.PHONY: test
 test:
 	pytest -q
 
