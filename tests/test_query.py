@@ -287,9 +287,7 @@ class TestQueryRagTimeout:
         chain = CountingFailChain(TimeoutError("deadline exceeded"))
 
         with caplog.at_level("WARNING"):
-            result = query_rag(
-                chain, FakeRetrievalStore(retrieved_docs), "q", k_docs=3
-            )
+            result = query_rag(chain, FakeRetrievalStore(retrieved_docs), "q", k_docs=3)
 
         assert chain.calls == 3
         assert result["response"] == ""
@@ -308,18 +306,14 @@ class TestQueryRagResponseError:
         chain = CountingFailChain(ResponseError("CUDA error: out of memory"))
 
         with caplog.at_level("WARNING"):
-            result = query_rag(
-                chain, FakeRetrievalStore(retrieved_docs), "q", k_docs=3
-            )
+            result = query_rag(chain, FakeRetrievalStore(retrieved_docs), "q", k_docs=3)
 
         assert chain.calls == 3
         assert result["response"] == ""
         assert result["retrieved_chunks"]
         assert any("LLM invoke failed" in r.message for r in caplog.records)
 
-    def test_retries_recoverable_error_then_succeeds(
-        self, retrieved_docs, monkeypatch
-    ):
+    def test_retries_recoverable_error_then_succeeds(self, retrieved_docs, monkeypatch):
         class ResponseError(Exception):
             pass
 

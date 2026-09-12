@@ -72,9 +72,7 @@ def prompt_overhead_tokens(*, privacy_prompt: bool | None = None) -> int:
     )
 
 
-def build_prompt_template(
-    *, privacy_prompt: bool | None = None
-) -> ChatPromptTemplate:
+def build_prompt_template(*, privacy_prompt: bool | None = None) -> ChatPromptTemplate:
     if privacy_prompt is None:
         privacy_prompt = Settings.load().privacy_prompt
     if privacy_prompt:
