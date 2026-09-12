@@ -37,8 +37,8 @@ PRIVACY_HUMAN_TEMPLATE = RAG_PROMPT_TEMPLATE
 _CHARS_PER_TOKEN = 4
 _CTX_WARN_RATIO = 0.9
 _PROMPT_OVERHEAD_TOKENS = 64
-_RETRIEVER_ATTEMPTS = 3
-_RETRIEVER_RETRY_SLEEP_SEC = 1.0
+_INVOKE_ATTEMPTS = 3
+_INVOKE_RETRY_SLEEP_SEC = 1.0
 
 
 def build_llm(
@@ -138,7 +138,11 @@ def query_rag(
 
     generation_started = time.perf_counter()
     try:
-        response = chain.invoke({"context": context_text, "question": question})
+        response = _retry_recoverable(
+            lambda: chain.invoke({"context": context_text, "question": question}),
+            question,
+            "LLM invoke",
+        )
     except Exception as exc:
         generation_sec = time.perf_counter() - generation_started
         if is_recoverable_llm_error(exc):
@@ -208,22 +212,31 @@ def is_recoverable_llm_error(exc: BaseException) -> bool:
 
 
 def _invoke_retriever(retriever: Any, question: str) -> list[Document]:
+    return _retry_recoverable(
+        lambda: retriever.invoke(question),
+        question,
+        "Retriever invoke",
+    )
+
+
+def _retry_recoverable(fn: Any, question: str, what: str) -> Any:
     last_exc: BaseException | None = None
-    for attempt in range(1, _RETRIEVER_ATTEMPTS + 1):
+    for attempt in range(1, _INVOKE_ATTEMPTS + 1):
         try:
-            return retriever.invoke(question)
+            return fn()
         except Exception as exc:
             last_exc = exc
-            if not is_recoverable_llm_error(exc) or attempt == _RETRIEVER_ATTEMPTS:
+            if not is_recoverable_llm_error(exc) or attempt == _INVOKE_ATTEMPTS:
                 raise
             logger.warning(
-                "Retriever invoke failed (attempt %d/%d): %s — %.80s",
+                "%s failed (attempt %d/%d): %s — %.80s",
+                what,
                 attempt,
-                _RETRIEVER_ATTEMPTS,
+                _INVOKE_ATTEMPTS,
                 exc.__class__.__name__,
                 question,
             )
-            time.sleep(_RETRIEVER_RETRY_SLEEP_SEC)
+            time.sleep(_INVOKE_RETRY_SLEEP_SEC)
     assert last_exc is not None
     raise last_exc
 

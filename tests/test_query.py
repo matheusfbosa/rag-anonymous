@@ -269,39 +269,75 @@ class TestLlmResponseErrorDetection:
         assert is_recoverable_llm_error(ValueError("nope")) is False
 
 
+class CountingFailChain:
+    def __init__(self, exc: Exception) -> None:
+        self.exc = exc
+        self.calls = 0
+
+    def invoke(self, payload: dict) -> str:
+        self.calls += 1
+        raise self.exc
+
+
 class TestQueryRagTimeout:
-    def test_timeout_returns_empty_response(self, retrieved_docs, caplog):
-        class SlowChain:
-            def invoke(self, payload: dict) -> str:
-                raise TimeoutError("deadline exceeded")
+    def test_timeout_retries_then_returns_empty_response(
+        self, retrieved_docs, monkeypatch, caplog
+    ):
+        monkeypatch.setattr("rag_anonymous.query.time.sleep", lambda _s: None)
+        chain = CountingFailChain(TimeoutError("deadline exceeded"))
 
         with caplog.at_level("WARNING"):
             result = query_rag(
-                SlowChain(), FakeRetrievalStore(retrieved_docs), "q", k_docs=3
+                chain, FakeRetrievalStore(retrieved_docs), "q", k_docs=3
             )
 
+        assert chain.calls == 3
         assert result["response"] == ""
         assert result["retrieved_chunks"]
         assert any("LLM invoke failed" in r.message for r in caplog.records)
 
 
 class TestQueryRagResponseError:
-    def test_response_error_returns_empty_response(self, retrieved_docs, caplog):
+    def test_response_error_retries_then_returns_empty_response(
+        self, retrieved_docs, monkeypatch, caplog
+    ):
         class ResponseError(Exception):
             pass
 
-        class BrokenChain:
-            def invoke(self, payload: dict) -> str:
-                raise ResponseError("CUDA error: out of memory")
+        monkeypatch.setattr("rag_anonymous.query.time.sleep", lambda _s: None)
+        chain = CountingFailChain(ResponseError("CUDA error: out of memory"))
 
         with caplog.at_level("WARNING"):
             result = query_rag(
-                BrokenChain(), FakeRetrievalStore(retrieved_docs), "q", k_docs=3
+                chain, FakeRetrievalStore(retrieved_docs), "q", k_docs=3
             )
 
+        assert chain.calls == 3
         assert result["response"] == ""
         assert result["retrieved_chunks"]
         assert any("LLM invoke failed" in r.message for r in caplog.records)
+
+    def test_retries_recoverable_error_then_succeeds(
+        self, retrieved_docs, monkeypatch
+    ):
+        class ResponseError(Exception):
+            pass
+
+        class FlakyChain:
+            def __init__(self) -> None:
+                self.calls = 0
+
+            def invoke(self, payload: dict) -> str:
+                self.calls += 1
+                if self.calls == 1:
+                    raise ResponseError("CUDA busy")
+                return "ok"
+
+        monkeypatch.setattr("rag_anonymous.query.time.sleep", lambda _s: None)
+        chain = FlakyChain()
+        result = query_rag(chain, FakeRetrievalStore(retrieved_docs), "q", k_docs=3)
+        assert chain.calls == 2
+        assert result["response"] == "ok"
 
 
 class FlakyRetriever:
